@@ -1,0 +1,52 @@
+---
+title: "WDAFS Talk"
+author: "Madeline Jovanovich"
+date: "4/13/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+Story board out the talk: what do I want the take home message to be?
+Introduction
+
+1.  Set the stage of the importance of an escapement focus; history, state statues quotes, policy that we must deal with escapement; "give the importnace of escapement"; Look at the ADF&G booklet, quotes from first commissioner 
+2.  Counting methods
+3.  Goal types: how are they picked, what they mean, leading into 
+4.  A review of performance: proportion of time met/exceeded/under
+5.  Conclusion of the general overview
+
+Body
+
+1.  Specific examples: "other species are doing well" (show that) "but let's take a look at chinook" (show examples); Show across the board, big scale overview opening: use this as a way to show what's happening on the ground; Use that as a segue to show what's going on on the grounds
+    *   What stocks are of harvest concern
+    *   Species comparison: are we doing better for sockeye, pinks, and chum than we are for chinook? 
+        +   SEAK escapement issues: Chinook in Taku and Stikine 
+            -   putting these inthe context of what the rest of the state is doing 
+            -   overall state is doing well, but exceptions
+    *   Kuskokwim: compare chinook to other species 
+2.  Hard and fast assessment of how many escapement goals are being met 
+    *   So what of overescpament? Daniel's paleoecology paper in BB 
+    *   Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from certain case studies, hard to see evidence of compensation (bending over of curb)
+
+
+
+Notes on presentations: 
+
+*   Set the stage in the beginning, tell the background story before? getting into the details I want to talk about 
+*   Peter: "tell them what you're going to say, say it, then tell them what you told them"
+*   Objectives: telling what I'm going to talk about 
+*   Telling my story: what is the timeline/storyline?
+
+
+
+
+
+
+
+
+
+```{r, eval=FALSE}
+escapement <- read.csv("~/R/Esc_goals_evaluated.csv")
+```
