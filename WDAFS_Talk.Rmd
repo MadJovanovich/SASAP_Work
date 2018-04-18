@@ -4,15 +4,21 @@ author: "Madeline Jovanovich"
 date: "4/13/2018"
 output: 
   html_document: 
+    toc: true
     highlight: tango
     theme: paper
 ---
+*why is the table of contents not appearing?* 
+
+
+#### Outline 
 
 Story board out the talk: what do I want the take home message to be?
+
 Introduction
 
 1.  Set the stage of the importance of an escapement focus; history, state statues quotes, policy that we must deal with escapement; "give the importnace of escapement"; Look at the ADF&G booklet, quotes from first commissioner 
-2.  Counting methods
+2.  Counting methods **escapement project types visualized**
 3.  Goal types: how are they picked, what they mean, leading into 
 4.  A review of performance: proportion of time met/exceeded/under
 5.  Conclusion of the general overview
@@ -27,10 +33,8 @@ Body
             -   overall state is doing well, but exceptions
     *   Kuskokwim: compare chinook to other species 
 2.  Hard and fast assessment of how many escapement goals are being met 
-    *   So what of overescpament? Daniel's paleoecology paper in BB 
+    *   So what of overescapement? [Daniel's paleoecology paper in BB](https://www.researchgate.net/publication/234142811_Centennial-Scale_Fluctuations_and_Regional_Complexity_Characterize_Pacific_Salmon_Population_Dynamics_Over_the_Past_Five_Centuries) 
     *   Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from certain case studies, hard to see evidence of compensation (bending over of curb)
-
-
 
 Notes on presentations: 
 
@@ -39,14 +43,309 @@ Notes on presentations:
 *   Objectives: telling what I'm going to talk about 
 *   Telling my story: what is the timeline/storyline?
 
+The following figures are printed in [Munro & Volk 2016](http://www.adfg.alaska.gov/FedAidPDFs/FMS16-04.pdf), for years 2004 through 2012
+
+1.  Summary of 300 goals in effect during the 2012 spawning season
+    i)  number goals by specie, type
+2.  Proportion of 49 goals by species in SE region
+3.  Proportion of 120 goals by species in Central region
+4.  Proportion of 72 goals by species in AYK reguib
+5.  Proportion of 59 goals by species in Westward
+6.  SE escapement compared to goals: 2004-2012
+7.  Central escapement compared to goals: 2004-2012
+8.  AYK escapement compared to goals: 2004-2012
+9.  Westward escapement compared to goals: 2004-2012
+10. Statewide summary by year of % of escapements that 
+    a)  met goal
+    b)  below lower bound of goal
+    c)  exceeded upper bount of goal
+    
 
 
 
-
-
-
-
-
-```{r, eval=FALSE}
-escapement <- read.csv("~/R/Esc_goals_evaluated.csv")
+```{r, message=FALSE, warning=FALSE}
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggthemes)
+library(RColorBrewer)
+library(scales)
+library(viridis)
 ```
+
+```{r}
+escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv")
+escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
+#escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
+```
+
+```{r, include=FALSE}
+esc_goals_results <- escapement_goals %>%
+    filter(!is.na(MetLower) | !is.na(MetUpper))
+
+sumna <- function(x) {
+    sum(x, na.rm = TRUE)
+}
+
+percents <- esc_goals_results %>%
+    select(SASAP.Region, Species, sampleYear, MetLower, MetUpper) %>%
+    group_by(sampleYear, SASAP.Region, Species) %>%
+    summarise(countMetLower = sumna(MetLower), 
+              countMetUpper = sumna(MetUpper), 
+              notMetUpper = sumna(!MetUpper), 
+              notMetLower = sumna(!MetLower),
+              percentMetUpper = (sumna(MetUpper)/(sumna(MetUpper) + sumna(!MetUpper))),
+              percentMetLower = (sumna(MetLower)/(sumna(MetLower) + sumna(!MetLower))))
+
+percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
+```
+
+```{r}
+
+```
+####Introduction
+
+#####Policy
+
+Article II of the [Alaska Administrative Code](http://www.legis.state.ak.us/basis/aac.asp#5.39.212) pertains to the governanace of salmon fisheries. 
+
+"Conservation of wild salmon stocks consistent with sustained yeild shall be accorded the highest priority." Which then also addresses allocation preferences. 
+
+"In the absence of a regulatory management plan, the burden of conservation shall be shared among all fisheries in close proportion to their respective harvest on the stock of concern... precise sharing of conservation among fisheries is dependent on the amount of stock-specific information available."
+
+"Most wild Alaska salmon stocks are fully allocated to fisheries capable of harvesting available surpluses. Natural fluctuations in the abundance of stocks harvested in a fishery will not be the single factor that identifies a fishery as expanding or new. "
+
+######5 AAC 39.222. Policy for the management of sustainable salmon fisheries
+
+"Alaska's salmon fisheries are healthy and sustainable largely because of abundant pristine habitat and the application of sound, precautionary, conservation management practices, there is a need for a comprehensive policy for the regulation and management of sustainable salmon fisheries"
+
+"n formulating fishery management plans designed to achieve maximum or optimum salmon production, the board and department must consider factors including environmental change, habitat loss or degradation, data uncertainty, limited funding for research and management programs, existing harvest patterns, and new fisheries or expanding fisheries"
+
+"The goal of the policy under this section is to ensure conservation of salmon and salmon's required marine and aquatic habitats, protection of customary and traditional subsistence uses and other uses, and the sustained economic health of Alaska's fishing communities."
+
+This section (a.1.c.1) the goes on to specify how conservation of wild salmon stocks and their habitats should be maintained at levels of resource productivity that assure sustained yield. It includes, "effects and interactions of introduced or enhanced salmon stocks on wild salmon stocks should be assessed; wild salmon stocks and fisheries on those stocks should be protected from adverse impacts from artificial propagation and enhancement efforts" as well as, "depleted salmon stocks should be allowed to recover or, where appropriate, should be actively restored; diversity should be maintained to the maximum extent possible, at the genetic, population, species, and ecosystem levels"
+
+"Salmon fisheries shall be managed to allow escapements within ranges necessary to conserve and sustain potential salmon production and maintain normal ecosystem functioning as follows:  
+a.  salmon spawning escapements should be assessed both temporally and geographically; escapement monitoring programs should be appropriate to the scale, intensity, and importance of each salmon stock's use;  
+b.  salmon escapement goals, whether sustainable escapement goals, biological escapement goals, optimal escapement goals, or inriver run goals, should be established in a manner consistent with sustained yield; unless otherwise directed, the department will manage Alaska's salmon fisheries, to the extent possible, for maximum sustained yield;  
+c.  salmon escapement goal ranges should allow for uncertainty associated with measurement techniques, observed variability in the salmon stock measured, changes in climatic and oceanographic conditions, and varying abundance within related populations of the salmon stock measured;  
+d.  salmon escapement should be managed in a manner to maintain genetic and phenotypic characteristics of the stock by assuring appropriate geographic and temporal distribution of spawners as well as consideration of size range, sex ratio, and other population attributes;  
+e.  impacts of fishing, including incidental mortality and other human-induced mortality, should be assessed and considered in harvest management decisions;  
+f.  salmon escapement and harvest management decisions should be made in a manner that protects nontarget salmon stocks or species;  
+g.  the role of salmon in ecosystem functioning should be evaluated and considered in harvest management decisions and setting of salmon escapement goals;  
+h.  salmon abundance trends should be monitored and considered in harvest management decisions"
+
+Regulation of human activities affecting salmon (harvest), public involvement in sustainable use and protection of salmon resources, and artificial propogation and habitat mangement in times of uncertainty are also addressed within a.1.c. 
+
+Stock assessements for the principles and criteria for susstainable salmon fisheries are determined. 
+
+The state is designated as the sole proprietor in Alaska salmon management: 
+"Nothing in the policy under this section is intended to expand, reduce, or be inconsistent with, the statutory regulatory authority of the board, the department, or other state agencies with regulatory authority that impacts the fishery resources of the state."
+
+Terminology is outlined (only some terms selected here):
+
+- allocation:means the granting of specific harvest privileges, usually by regulation, among or between various user groups; "allocation" includes quotas, time periods, area restrictions, percentage sharing of stocks, and other management measures providing or limiting harvest opportunity 
+
+- allocation criteria: means the factors set out in AS 16.05.251(e) considered by the board as appropriate to particular allocation decisions under 5 AAC 39.205, 5 AAC 75.017, and 5 AAC 77.007
+
+- **BEG, biological escapement goal: the escapement that provides the greatest potential for maximum sustained yield; the primary management objective for the escapement unless an optimal escapement or inriver run goal has been adopted; BEG will be developed from the best available biological information, and should be scientifically defensible on the basis of available biological information; BEG will be determined by the department and will be expressed as a range based on factors such as salmon stock productivity and data uncertainty; the department will seek to maintain evenly distributed salmon escapements within the bounds of a BEG**
+
+- conservation concern: concern arising from a chronic inability, despite the use of specific management measures, to maintain escapements for a stock above a sustained escapement threshold (SET); a conservation concern is more severe than a management concern
+
+- depeleted salmon stock: a salmon stock for which there is a conservation concern
+
+- diversity: in a biological context, means the range of variation exhibited within any level of organization, such as among genotypes within a salmon population, among populations within a salmon stock, among salmon stocks within a species, among salmon species within a community, or among communities within an ecosystem
+
+- enhanced salmon stock: a stock of salmon that is undergoing specific manipulation, such as hatchery augmentation or lake fertilization, to enhance its productivity above the level that would naturally occur; includes an introduced stock, where no wild salmon stock had occurred before, or a wild salmon stock undergoing manipulation, but does not include a salmon stock undergoing rehabilitation, which is intended to restore a salmon stock's productivity to a higher natural level
+
+- **escapement: the annual estimated size of the spawning salmon stock; quality of the escapement may be determined not only by numbers of spawners, but also by factors such as sex ratio, age composition, temporal entry into the system, and spatial distribution within the salmon spawning habitat**
+
+- expanding fishery: a salmon fishery in which effective harvesting effort has recently increased significantly beyond historical levels and where the increase has not resulted from natural fluctuations in salmon abundance
+
+- expected yields: levels at or near the lower range of recent historic harvests if they are deemed sustainable
+
+- genetic: those characteristics (genotypic) of an individual or group of salmon that are expressed genetically, such as allele frequencies or other genetic markers
+
+- habitat concern: the degradation of salmon habitat that results in, or can be anticipated to result in, impacts leading to yield, management, or conservation concerns
+
+- **harvestable surplus: the number of salmon from a stock's annual run that is surplus to escapement needs and can reasonably be made available for harvest**
+
+- healthy salmon stock: a stock of salmon that has annual runs typically of a size to meet escapement goals and a potential harvestable surplus to support optimum or maximum sustained yield
+
+- incidental harvest: the harvest of fish, or other species, that is captured in addition to the target species of a fishery
+
+- incidental mortality: the mortality imposed on a salmon stock outside of directed fishing, and mortality caused by incidental harvests, interaction with fishing gear, habitat degradation, and other human-related activities
+
+- **inriver run goal: a specific management objective for salmon stocks that are subject to harvest upstream of the point where escapement is estimated; the inriver run goal will be set in regulation by the board and is comprised of the SEG, BEG, or OEG, plus specific allocations to inriver fisheries**
+
+- **management concern: a concern arising from a chronic inability, despite use of specific management measures, to maintain escapements for a salmon stock within the bounds of the SEG, BEG, OEG, or other specified management objectives for the fishery; a management concern is not as severe as a conservation concern**
+
+- **MSY, maximum sustained yield: the greatest average annual yield from a salmon stock; in practice, MSY is achieved when a level of escapement is maintained within a specific range on an annual basis, regardless of annual run strength; the achievement of MSY requires a high degree of management precision and scientific information regarding the relationship between salmon escapement and subsequent return; the concept of MSY should be interpreted in a broad ecosystem context to take into account species interactions, environmental changes, an array of ecosystem goods and services, and scientific uncertainty**
+
+- **OEG, optimanl escapement goal: a specific management objective for salmon escapement that considers biological and allocative factors and may differ from the SEG or BEG; an OEG will be sustainable and may be expressed as a range with the lower bound above the level of SET, and will be adopted as a regulation by the board; the department will seek to maintain evenly distributed escapements within the bounds of the OEG**
+
+- OSY, optimum sustained yield: an average annual yield from a salmon stock considered to be optimal in achieving a specific management objective other than maximum yield, such as achievement of a consistent level of sustained yield, protection of a less abundant or less productive salmon stock or species, enhancement of catch per unit effort in sport fishery, facilitation of a nonconsumptive use, facilitation of a subsistence use, or achievement of a specific allocation
+
+- overfishing:a level of fishing on a salmon stock that results in a conservation or management concern
+
+- phenotypic characteristics: those characteristics of an individual or group of salmon that are expressed physically, such as body size and length at age
+
+- rehabilitation: efforts applied to a salmon stock to restore it to an otherwise natural level of productivity; "rehabilitation" does not include an enhancement, which is intended to augment production *above* otherwise natural levels
+
+- **return: the total number of salmon in a stock from a single brood (spawning) year surviving to adulthood; because the ages of adult salmon (except pink salmon) returning to spawn varies, the total return from a brood year will occur over several calendar years; the total return generally includes those mature salmon from a single brood year that are harvested in fisheries plus those that compose the salmon stock's spawning escapement; "return" does not include a run, which is the number of mature salmon in a stock during a single calendar year**
+
+- **run: the total number of salmon in a stock surviving to adulthood and returning to the vicinity of the natal stream in any calendar year, composed of both the harvest of adult salmon plus the escapement; the annual run in any calendar year, except for pink salmon, is composed of several age classes of mature fish from the stock, derived from the spawning of a number of previous brood years**
+
+- salmon:the five wild anadromous semelparous Pacific salmon species Oncorhynchus sp., except steelhead and cutthroat trout, native to Alaska as follows:  
+    a. Chinook or king salmon (O. tschawytscha);  
+    b.  sockeye or red salmon (O. nerka);  
+    c.  coho or silver salmon (O. kisutch);  
+    d.  pink or humpback salmon (O. gorbuscha); and  
+    e.  chum or dog salmon (O. keta)
+  
+- salmon population: a locally interbreeding group of salmon that is distinguished by a distinct combination of genetic, phenotypic, life history, and habitat characteristics, comprised of an entire stock or a component portion of a stock; the smallest uniquely identifiable spawning aggregation of genetically similar salmon used for monitoring purposes
+
+- salmon stock: a locally interbreeding group of salmon that is distinguished by a distinct combination of genetic, phenotypic, life history, and habitat characteristics or an aggregation of two or more interbreeding groups which occur within the same geographic area and is managed as a unit
+
+- **stock of concern: a stock of salmon for which there is a yield, management, or conservation concern::
+
+- **SEG, sustainable escapement goal: a level of escapement, indicated by an index or an escapement estimate, that is known to provide for sustained yield over a 5 to 10 year period, used in situations where a BEG cannot be estimated or managed for; the SEG is the primary management objective for the escapement, unless an optimal escapement or inriver run goal has been adopted by the board; the SEG will be developed from the best available biological information; and should be scientifically defensible on the basis of that information; the SEG will be determined by the department and will take into account data uncertainty and be stated as either a "SEG range" or "lower bound SEG"; the department will seek to maintain escapements within the bounds of the SEG range or above the level of a lower bound SEG**
+
+- **sustainable salmon fishery: a salmon fishery that persists and obtains yields on a continuing basis; characterized by fishing activities and habitat alteration, if any, that do not cause or lead to undesirable changes in biological productivity, biological diversity, or ecosystem structure and function, from one human generation to the next**
+
+- susatined yield: an average annual yield that results from a level of salmon escapement that can be maintained on a continuing basis; a wide range of average annual yield levels is sustainable; a wide range of annual escapement levels can produce sustained yields
+
+- SET, sustainted escapement threshold: a threshold level of escapement, below which the ability of the salmon stock to sustain itself is jeopardized; in practice, SET can be estimated based on lower ranges of historical escapement levels, for which the salmon stock has consistently demonstrated the ability to sustain itself; the SET is lower than the lower bound of the BEG and lower than the lower bound of the SEG; the SET is established by the department in consultation with the board, as needed, for salmon stocks of management or conservation concern
+
+- target species, or target salmon stock: the main, or several major, salmon species of interest toward which a fishery directs its harvest
+
+- yield: the number or weight of salmon harvested in a particular year or season from a stock
+
+- yield concern: a concern arising from a chronic inability, despite the use of specific management measures, to maintain expected yields, or harvestable surpluses, above a stock's escapement needs; a yield concern is less severe than a management concern, which is less severe than a conservation concern
+
+- **wild salmon stock: a stock of salmon that originates in a specific location under natural conditions; may include an enhanced or rehabilitated stock if its productivity is augmented by supplemental means, such as lake fertilization or rehabilitative stocking; "wild salmon stock" does not include an introduced stock, except that some introduced salmon stocks may come to be considered "wild" if the stock is self-sustaining for a long period of time**
+
+- action point: a threshold value for some quantitative indicator of stock run strength at which an explicit management action will be taken to achieve an optimal escapement goal
+
+
+######5 AAC 39.223. Policy for statewide salmon escapement goals 
+
+"The DFG and the BoF are charged with the duty to conserve and develop Alaska's salmon fisheries on the sustained yield principle. Therefore, the establishment of salmon escapement goals is the responsibility of both the board and the department working collaboratively. The purpose of this policy is to establish the concepts, criteria, and procedures for establishing and modifying salmon escapement goals and to establish a process that facilitates public review of allocative issues associated with escapement goals."
+
+ 
+"The board recognizes the department's responsibility to  
+
+1.  document existing salmon escapement goals for all salmon stocks that are currently managed for an escapement goal  
+2.  establish **biological escapement goals (BEG)** for salmon stocks *for which the department can reliably enumerate salmon escapement levels, as well as total annual returns*
+3.  establish **sustainable escapement goals (SEG)** for salmon stocks *for which the department can reliably estimate escapement levels when there is not sufficient information to enumerate total annual returns and the range of escapements that are used to develop a BEG*  
+4.  establish **sustained escapement thresholds (SET)** as provided in 5 AAC 39.222 (Policy for the Management of Sustainable Salmon Fisheries)  
+5.  establish escapement goals for **aggregates of individual spawning populations** with similar productivity and vulnerability to fisheries and for salmon stocks managed as units
+6.  review an existing, or propose a new, BEG, SEG and SET on a schedule that conforms, to the extent practicable, to the board's regular cycle of consideration of area regulatory proposals
+7.  prepare a scientific analysis with supporting data whenever a new BEG, SEG, or SET, or a modification to an existing BEG, SEG, or SET is proposed and, in its discretion, to conduct independent peer reviews of its BEG, SEG, and SET analyses
+8.  notify the public whenever a new BEG, SEG, or SET is established or an existing BEG, SEG, or SET is modified
+9.  whenever allocative impacts arise from any management actions necessary to achieve a new or modified BEG, SEG or SET, report to the board on a schedule that conforms, to the extent practicable, to the board's regular cycle of consideration of area regulatory proposals so that it can address allocation issues."
+		
+"In recognition of its joint responsibilities, and in consultation with the department, the board will  
+
+1.  take regulatory actions as may be necessary to address allocation issues arising from implementation of a new or modified BEG, SEG, and SET;  
+2.  during its regulatory process, review a BEG, SEG, or SET determined by the department and, with the assistance of the department, determine the appropriateness of establishing an optimal escapement goal (OEG); the board will provide an explanation of the reasons for establishing an OEG and provide, to the extent practicable, and with the assistance of the department, an estimate of expected differences in yield of any salmon stock, relative to maximum sustained yield, resulting from implementation of an OEG."  
+		
+"Unless the context requires otherwise, the terms used in this section have the same meaning given those terms in 5 AAC 39.222(f)."
+
+The AAC also dictates fishing gear specifications and operations, district boundaries; and in the past has addressed specialized management plans in the past, such as the AYK Region Chum Salmon Rebuilding Management Plan. 
+
+
+#####Exploring Esapement Goals
+
+3.  Goal types: how are they picked, what they mean; lead into #4
+*I would like to add N by region to each bar, and decrease size of legend title and points*
+```{r, fig.align="center"}
+ggplot(data = esc_goals_results, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    labs(x = "Region",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Region") +
+    ggtitle("Escapement Goals by Region") +
+    theme_minimal() +
+    theme(legend.text = element_text(size=8)) +
+    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral")
+```
+4.  A review of performance: proportion of time met/exceeded/under
+*Years that all = 100% are suspect, need some QA*
+```{r, fig.align="center"}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill') +
+    xlab("Year") + 
+    ylab("Percentage Achieved") +
+    ggtitle("Annual Goal Achievement, Statewide") +
+    scale_y_continuous(labels=scales::percent) + 
+    guides(fill=guide_legend(title="")) + 
+    theme_minimal() +
+    scale_fill_brewer(palette="Paired")
+```
+*This plot still needs some work*
+```{r, fig.align="center", fig.height=5}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol=1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette="Paired")
+```
+*Need to cut off unnecessary years*
+```{r, fig.align="center"}
+#It's easier to compare by region and year with less columns, but we still need to stretch out the y axis
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill') +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement") +
+    scale_y_continuous(labels=scales::percent) + 
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~SASAP.Region, ncol = 2) + 
+    theme_minimal() +
+    scale_fill_brewer(palette="Paired")
+```
+```{r, fig.align="center", fig.width=6}
+ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
+    geom_line(size=1.25) + 
+    labs(title = "Annual Lower Goal Achievement",
+         x = "Year", 
+         y = "Proportion of Years Met") +
+    scale_y_continuous(labels=percent) + 
+    facet_wrap(~SASAP.Region) + 
+    theme_minimal() +
+    scale_color_brewer(palette="Paired")
+```
+```{r, fig.align="center"}
+# Percent of goals met over time, grouped by species
+ ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
+     geom_line() +
+     xlab("Sample Year") + 
+     ylab("Percent of Goals Met") +
+     scale_y_continuous(labels=scales::percent) + 
+     facet_wrap(~SASAP.Region) +
+     theme_minimal() +
+    scale_color_brewer(palette="Paired")
+```
+
+```{r}
+#Trying to figure out a better way to visualize this. We can look at "unmet" and "exceeded" as error
+# Percent of goals met over time, grouped by species
+ ggplot(data = percents, aes(x = sampleYear, xmin=min(sampleYear), y = percentMetLower, ymin=min(percentMetLower), ymax=max(percentMetLower), color=Species)) + 
+     geom_errorbar() +
+     xlab("Sample Year") + 
+     ylab("Percent of Goals Met") +
+     scale_y_continuous(labels=scales::percent) + 
+     facet_wrap(~SASAP.Region) +
+     theme_minimal() +
+    scale_fill_brewer("Diamond\nclarity")
+```
+

@@ -1,0 +1,291 @@
+---
+title: "Escapement Goal Visualizations for AFS"
+author: "Madeline Jovanovich"
+date: "4/5/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+Story board out the talk: what do I want the take home message to be?
+-Introduction: lay the stage of the importance of an escapement focus; history, state statues quotes, policy that we must deal with escapement 
+"give the importnace of escapement"
+-the move on the methods of countins
+-then move on to goals: how are they picked, what they mean, leading into a review of performance 
+--after general overview, then move on the specific examples 
+"other species are doing well" (show that) "but let's take a look at chinook"
+
+The following figures are printed in [Munro & Volk 2016](http://www.adfg.alaska.gov/FedAidPDFs/FMS16-04.pdf)
+
+1.  Summary of 300 goals in effect during the 2012 spawning season
+    i)  number goals by specie, type
+2.  Proportion of 49 goals by species in SE region
+3.  Proportion of 120 goals by species in Central region
+4.  Proportion of 72 goals by species in AYK reguib
+5.  Proportion of 59 goals by species in Westward
+6.  SE escapement compared to goals: 2004-2012
+7.  Central escapement compared to goals: 2004-2012
+8.  AYK escapement compared to goals: 2004-2012
+9.  Westward escapement compared to goals: 2004-2012
+10. Statewide summary by year of % of escapements that 
+    a)  met goal
+    b)  below lower bound of goal
+    c)  exceeded upper bount of goal
+    
+    For years 2004 through 2012
+    
+**Should I first recreate the figures in M&V, but with SASAP regions; then move on to plot how I would like?**
+    
+The following report will include figures that show escapement goal information reported by 
+
+1.  SASAP region
+    a)  number of goals 
+    b)  number rivers with goals
+2.  Location
+3.  Proportion of time goals were 
+    a)  met
+    b)  exceeded upper bound 
+    c)  below lower bound
+    d)  **what about range of years across regions?**
+4.  Locations with goals met 
+    a)  escapement over time 
+    b)  catch over time
+5.  Locations with goals exceeded 
+    a)  escapement over time 
+    b)  catch over time
+6.  Locations with goals below 
+    a)  escapement over time 
+    b)  catch over time
+7.  Compare locations with escapement information to those with goals (LocationID length = 360 and 229, respectively)
+
+
+**Note: to include 5 and 6 from the above list, the [harvest data](https://knb.ecoinformatics.org/#view/urn:uuid:ed53e7bd-c798-4839-a955-ba8179ea1260) must be reformatted**
+I am interested in commercial catch, but should I show subsistence and sport as well? That may be too much to do. 
+
+Talking points: 
+Look at the ADF&G booklet, quotes from first commissioner 
+Hard and fast assessment of how many escapement goals are being met 
+Show across the board, big scale overview opening: use this as a way to show what's happening on the ground
+Use that as a segue to show what's going on on the grounds 
+What stocks are of harvest concern 
+Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from certain case studies, hard to see evidence of compensation (bending over of curb)
+
+So what of overescpament? 
+Daniel's paleoecology paper in BB 
+
+Species comparison: 
+are we doing better for sockeye, pinks, and chum than we are for chinook? 
+
+SEAK escapement issues: Chinook in Taku and Stikine 
+-putting these inthe context of what the rest of the state is doing 
+-overall state is doing well, but exceptions
+
+Kuskokwim: compare chinook to other species 
+
+These visualizations are dependent on first running ~/sasap-data/data-processing/Escapement/GoalEvaluation.Rmd
+
+The following read command is for mjovanvich's local drive: 
+```{r}
+esc_goals_evaluated <- read.csv(file='~/R/Esc_goals_evaluated.csv')
+```
+
+The following read command is for mjovanvich's Aurora: 
+```{r, eval=FALSE}
+esc_goals_evaluated <- read.csv(file='~/Escapement/Esc_goals_evaluated.csv')
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggthemes)
+library(RColorBrewer)
+library(tables)
+library(stargazer)
+library(scales)
+```
+
+
+Creating proportions of time in which escapement goals were either met or not:
+
+(Why did we not just scan these from the reports when we scanned the data?)
+```{r, include=FALSE}
+esc_goals_results <- esc_goals_evaluated %>%
+    filter(!is.na(MetLower) | !is.na(MetUpper))
+
+sumna <- function(x) {
+    sum(x, na.rm = TRUE)
+}
+
+percents <- esc_goals_results %>%
+    select(SASAP.Region, Species, sampleYear, MetLower, MetUpper) %>%
+    group_by(sampleYear, SASAP.Region, Species) %>%
+    summarise(countMetLower = sumna(MetLower), 
+              countMetUpper = sumna(MetUpper), 
+              notMetUpper = sumna(!MetUpper), 
+              notMetLower = sumna(!MetLower),
+              percentMetUpper = (sumna(MetUpper)/(sumna(MetUpper) + sumna(!MetUpper))),
+              percentMetLower = (sumna(MetLower)/(sumna(MetLower) + sumna(!MetLower))))
+
+percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
+```
+
+```{r, eval=FALSE}
+#Need to write this code for the percents data, giving us a kable printout of:
+#   number of goals met, exceeded, or below goals by region
+#   number of goals by region (total)
+#   number of escapement locations by region (comparing esc_goals to esc_goals_evaluated)
+releases <- releases[!is.na(releases$ReleasedInd),]
+str(returnsby_year)
+range(returnsby_year$Year)
+range(returnsby_year$TotalCatch)
+tbl_df(returnsby_year)
+summary(returnsby_year)
+
+rby_sum <- returnsby_year %>%
+    group_by(Region) %>% 
+    select(Year, TotalCatch) %>% 
+    summarise_all(funs(min = min,
+                     max = max))
+num_hatcheries <- returnsby_year %>%
+    group_by(Region) %>% 
+    select(Hatchery, Project, Species) %>% 
+    summarise_all(funs(n_distinct))
+
+dim(rby_sum) 
+dim(num_hatcheries) 
+summary <- left_join(rby_sum, num_hatcheries)
+summary <- summary[,c(1,2,4,3,5,6,7,8)]
+
+colnames(summary) <- (c("Region", "Year min", "Year max", "Min return", "Max return", "Hatchery", "Project", "Species"))
+```
+```{r, eval=FALSE}
+kable(summary, caption = "Returns Summary")
+
+```
+
+```{r, eval=FALSE}
+kable(percents, caption = "Table with kable")
+```
+
+
+
+####Investigating escapement goals by region 
+
+Might be more useful to see # of rivers of each goal type by region
+
+Then show table with range of years for each goal type by region 
+
+Then single out rivers of interest within that region
+
+I don't like how far down the x-axis label is
+
+The following are similar to [Munro & Volk, 2016](http://www.adfg.alaska.gov/FedAidPDFs/FMS16-04.pdf)
+**be sure to track citations for talk**
+
+Thinking about color scheme: is the following acceptable for color blind because it has different luminosities? I.e. even though it is blue, the blues are different (so they would be like grayscale)
+```{r}
+ggplot(data = esc_goals_results, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    xlab("Region") + 
+    ylab("Number of Goals") +
+    ggtitle("Number of Escapement Goals by Region") +
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 50, hjust = 1)) + 
+    scale_fill_brewer("Diamond\nclarity") +
+    theme(legend.title=element_blank())
+```
+
+Why is the scale_color_colorblind() call not working? 
+```{r}
+ggplot(data = esc_goals_results, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    xlab("Region") + 
+    ylab("Number of Goals") +
+    ggtitle("Number of Escapement Goals by Region") +
+    scale_color_colorblind() +
+    theme(axis.text.x = element_text(angle = 50, hjust = 1)) +
+    theme(legend.title=element_blank())
+```
+
+
+####Proportion of goal achievement
+
+```{r}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill') +
+    xlab("Year") + 
+    ylab("Percentage Achieved") +
+    ggtitle("Annual Percentage of Goals Achieved, Statewide") +
+    scale_y_continuous(labels=scales::percent) + 
+    guides(fill=guide_legend(title="")) + 
+    theme_minimal() + 
+    scale_fill_brewer("Diamond\nclarity")
+```
+
+```{r}
+#Now the y axis here is a bit ugly and needs to be stretched out, but it allows us to view the relative acheivement by year
+#But now, since goals are set by location, viewing achievement by location and species would be more useful 
+#It would also be great to view likelihood/tendency to exceed the goal. "Goals are exceeded blank amount of time"
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill') +
+    xlab("Year") + 
+    ylab("Percentage Achieved") + 
+    ggtitle("Annual Percentage of Goals Achieved") +
+    scale_y_continuous(labels=scales::percent) + 
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol=1, scales="free_y") + 
+    theme_minimal() + 
+    scale_fill_brewer("Diamond\nclarity")
+```
+
+```{r}
+#It's easier to compare by region and year with less columns, but we still need to stretch out the y axis
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill') +
+    xlab("Sample Year") + 
+    ylab("Annual Percentage of Goal Achieved") +
+    scale_y_continuous(labels=scales::percent) + 
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~SASAP.Region, ncol = 2) + 
+    theme_minimal() + 
+    scale_fill_brewer("Diamond\nclarity")
+```
+
+```{r}
+ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
+    geom_line() + 
+    xlab("Sample Year") + 
+    ylab("Percent of Goals Met") +
+    scale_y_continuous(labels=scales::percent) + 
+    facet_wrap(~SASAP.Region) + 
+    theme_minimal() +
+    scale_color_calc()
+```
+```{r}
+# Percent of goals met over time, grouped by species
+ ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
+     geom_line() +
+     xlab("Sample Year") + 
+     ylab("Percent of Goals Met") +
+     scale_y_continuous(labels=scales::percent) + 
+     facet_wrap(~SASAP.Region) +
+     theme_minimal() +
+    scale_fill_brewer("Diamond\nclarity")
+```
+
+```{r}
+#Trying to figure out a better way to visualize this. We can look at "unmet" and "exceeded" as error
+# Percent of goals met over time, grouped by species
+ ggplot(data = percents, aes(x = sampleYear, xmin=min(sampleYear), y = percentMetLower, ymin=min(percentMetLower), ymax=max(percentMetLower), color=Species)) + 
+     geom_errorbar() +
+     xlab("Sample Year") + 
+     ylab("Percent of Goals Met") +
+     scale_y_continuous(labels=scales::percent) + 
+     facet_wrap(~SASAP.Region) +
+     theme_minimal() +
+    scale_fill_brewer("Diamond\nclarity")
+```
+
