@@ -4,34 +4,41 @@ author: "Madeline Jovanovich"
 date: "4/13/2018"
 output: 
   html_document: 
-    toc: true
+    toc: yes
     highlight: tango
     theme: paper
+    toc_depth: 6
+    toc_float: no
 ---
-*why is the table of contents not appearing?* 
 
+To Dos:
 
-#### Outline 
+* Lots of data QA still necessary
+* Change AK Pen & Aleutian name to something shorter to better fit plots? 
+* Definite consistent color schemes for different types of data visualizations
 
+### Outline 
+
+Notes from meeting with Peter, 4/13/18:
 Story board out the talk: what do I want the take home message to be?
 
 Introduction
 
-1.  Set the stage of the importance of an escapement focus; history, state statues quotes, policy that we must deal with escapement; "give the importnace of escapement"; Look at the ADF&G booklet, quotes from first commissioner 
+1.  Set the stage of the importance of an escapement focus; history, state statues quotes, policy that we must deal with escapement; "give the importnace of escapement"; Look at the ADF&G booklet, quotes from first commissioner **written text with some pictures**
 2.  Counting methods **escapement project types visualized**
-3.  Goal types: how are they picked, what they mean, leading into 
-4.  A review of performance: proportion of time met/exceeded/under
-5.  Conclusion of the general overview
+3.  Goal types: how are they picked, what they mean, leading into **definitions, including well-known systems with those types of goals (and mention why they management of the system may not exactly matcher the goal definition)**
+4.  A review of performance: proportion of time met/exceeded/under **plots**
+5.  Conclusion of the general overview **plots? written text**
 
 Body
 
 1.  Specific examples: "other species are doing well" (show that) "but let's take a look at chinook" (show examples); Show across the board, big scale overview opening: use this as a way to show what's happening on the ground; Use that as a segue to show what's going on on the grounds
-    *   What stocks are of harvest concern
     *   Species comparison: are we doing better for sockeye, pinks, and chum than we are for chinook? 
         +   SEAK escapement issues: Chinook in Taku and Stikine 
             -   putting these inthe context of what the rest of the state is doing 
             -   overall state is doing well, but exceptions
-    *   Kuskokwim: compare chinook to other species 
+    *   What stocks are of harvest concern
+            -   Kuskokwim: compare chinook to other species, and to chinook runs in other regions (Yukon, Bristol Bay, and a system where they may more stable)
 2.  Hard and fast assessment of how many escapement goals are being met 
     *   So what of overescapement? [Daniel's paleoecology paper in BB](https://www.researchgate.net/publication/234142811_Centennial-Scale_Fluctuations_and_Regional_Complexity_Characterize_Pacific_Salmon_Population_Dynamics_Over_the_Past_Five_Centuries) 
     *   Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from certain case studies, hard to see evidence of compensation (bending over of curb)
@@ -43,7 +50,7 @@ Notes on presentations:
 *   Objectives: telling what I'm going to talk about 
 *   Telling my story: what is the timeline/storyline?
 
-The following figures are printed in [Munro & Volk 2016](http://www.adfg.alaska.gov/FedAidPDFs/FMS16-04.pdf), for years 2004 through 2012
+####[Munro & Volk 2016](http://www.adfg.alaska.gov/FedAidPDFs/FMS16-04.pdf), Figures; 2004-2012
 
 1.  Summary of 300 goals in effect during the 2012 spawning season
     i)  number goals by specie, type
@@ -61,8 +68,6 @@ The following figures are printed in [Munro & Volk 2016](http://www.adfg.alaska.
     c)  exceeded upper bount of goal
     
 
-
-
 ```{r, message=FALSE, warning=FALSE}
 library(knitr)
 library(dplyr)
@@ -74,13 +79,36 @@ library(scales)
 library(viridis)
 ```
 
+####Color schemes
+
+* Region `scale_fill_brewer("Colors in Spectral", palette="Spectral")`
+
+* Species `scale_color_brewer(palette="Paired")`
+
+* Exceeded/met/unmet `scale_fill_brewwe(palette="greens")` for now, would like to change 
+```{r, echo=FALSE, eval=FALSE}
+library(scales)
+show_col(hue_pal()(30))
+achievement_colors <- c(A = "#E58700", B = "#00BF7D", C ="F8766D")
+
+simplePlot <- function(DT, tit) 
+  ggplot(DT ,aes(x=Name, y=Value, fill=Group)) +
+  geom_bar(stat="identity") + xlab("") + ggtitle(tit) +
+  #Specify colours
+  scale_fill_manual(values=achievement_colors)
+```
+
+
 ```{r}
+#Need to change to KNB url
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv")
-escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
+#escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
 #escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
 ```
 
+
 ```{r, include=FALSE}
+#Need to create a kable of this
 esc_goals_results <- escapement_goals %>%
     filter(!is.na(MetLower) | !is.na(MetUpper))
 
@@ -101,12 +129,10 @@ percents <- esc_goals_results %>%
 percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
 ```
 
-```{r}
 
-```
-####Introduction
+###Introduction
 
-#####Policy
+####Policy
 
 Article II of the [Alaska Administrative Code](http://www.legis.state.ak.us/basis/aac.asp#5.39.212) pertains to the governanace of salmon fisheries. 
 
@@ -116,7 +142,7 @@ Article II of the [Alaska Administrative Code](http://www.legis.state.ak.us/basi
 
 "Most wild Alaska salmon stocks are fully allocated to fisheries capable of harvesting available surpluses. Natural fluctuations in the abundance of stocks harvested in a fishery will not be the single factor that identifies a fishery as expanding or new. "
 
-######5 AAC 39.222. Policy for the management of sustainable salmon fisheries
+#####5 AAC 39.222. Policy for the management of sustainable salmon fisheries
 
 "Alaska's salmon fisheries are healthy and sustainable largely because of abundant pristine habitat and the application of sound, precautionary, conservation management practices, there is a need for a comprehensive policy for the regulation and management of sustainable salmon fisheries"
 
@@ -197,7 +223,7 @@ Terminology is outlined (only some terms selected here):
 
 - **run: the total number of salmon in a stock surviving to adulthood and returning to the vicinity of the natal stream in any calendar year, composed of both the harvest of adult salmon plus the escapement; the annual run in any calendar year, except for pink salmon, is composed of several age classes of mature fish from the stock, derived from the spawning of a number of previous brood years**
 
-- salmon:the five wild anadromous semelparous Pacific salmon species Oncorhynchus sp., except steelhead and cutthroat trout, native to Alaska as follows:  
+- salmon: the five wild anadromous semelparous Pacific salmon species Oncorhynchus sp., except steelhead and cutthroat trout, native to Alaska as follows:  
     a. Chinook or king salmon (O. tschawytscha);  
     b.  sockeye or red salmon (O. nerka);  
     c.  coho or silver salmon (O. kisutch);  
@@ -229,7 +255,7 @@ Terminology is outlined (only some terms selected here):
 - action point: a threshold value for some quantitative indicator of stock run strength at which an explicit management action will be taken to achieve an optimal escapement goal
 
 
-######5 AAC 39.223. Policy for statewide salmon escapement goals 
+#####5 AAC 39.223. Policy for statewide salmon escapement goals 
 
 "The DFG and the BoF are charged with the duty to conserve and develop Alaska's salmon fisheries on the sustained yield principle. Therefore, the establishment of salmon escapement goals is the responsibility of both the board and the department working collaboratively. The purpose of this policy is to establish the concepts, criteria, and procedures for establishing and modifying salmon escapement goals and to establish a process that facilitates public review of allocative issues associated with escapement goals."
 
@@ -256,9 +282,9 @@ Terminology is outlined (only some terms selected here):
 The AAC also dictates fishing gear specifications and operations, district boundaries; and in the past has addressed specialized management plans in the past, such as the AYK Region Chum Salmon Rebuilding Management Plan. 
 
 
-#####Exploring Esapement Goals
+####Exploring Escapement Goals
 
-3.  Goal types: how are they picked, what they mean; lead into #4
+Goal Types
 *I would like to add N by region to each bar, and decrease size of legend title and points*
 ```{r, fig.align="center"}
 ggplot(data = esc_goals_results, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
@@ -273,9 +299,54 @@ ggplot(data = esc_goals_results, aes(x = SASAP.Region, fill=factor(types), y=(..
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral")
 ```
-4.  A review of performance: proportion of time met/exceeded/under
+
+```{r, fig.align="center", fig.width=6.5}
+ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    labs(x = "Year",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Region") +
+    ggtitle("Escapement Goals by Region") +
+    theme_minimal() +
+    theme(legend.text = element_text(size=8)) +
+    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
+    facet_wrap(~SASAP.Region, scales="free_y")
+```
+
+```{r, fig.align="center", fig.width=6.5}
+ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    labs(x = "Year",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Species") +
+    ggtitle("Escapement Goals by Region") +
+    theme_minimal() +
+    theme(legend.text = element_text(size=8)) +
+    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
+    facet_wrap(~Species, scales="free_y", ncol=2)
+```
+
+Review of Performance
+
 *Years that all = 100% are suspect, need some QA*
-```{r, fig.align="center"}
+
+```{r, fig.align="center", warning=FALSE}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill') +
+    xlab("Year") + 
+    ylab("Proportion of Years Achieved") +
+    ggtitle("Annual Goal Achievement, Statewide") +
+    scale_y_continuous(labels=scales::percent) + 
+    guides(fill=guide_legend(title="")) + 
+    theme_minimal() +
+    scale_fill_brewer(palette="greens")
+```
+```{r, fig.align="center", eval=FALSE, include=FALSE}
+#Why is scale_fill_manual not working? 
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill') +
     xlab("Year") + 
@@ -284,22 +355,13 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
     scale_y_continuous(labels=scales::percent) + 
     guides(fill=guide_legend(title="")) + 
     theme_minimal() +
-    scale_fill_brewer(palette="Paired")
+    scale_fill_manual(values=c(A = "#E58700", B = "#00BF7D", C ="F8766D"))
 ```
-*This plot still needs some work*
-```{r, fig.align="center", fig.height=5}
-ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
-    geom_bar(position='fill', width = 1) +
-    labs(x = "Year", 
-         y = "Percentage Achieved", 
-         title = "Annual Goal Achievement") + 
-    scale_y_continuous(labels=percent) +
-    guides(fill=guide_legend(title="")) + 
-    facet_wrap(~Species, ncol=1, scales="free_y") + 
-    theme_minimal() +
-    scale_fill_brewer(palette="Paired")
-```
+
 *Need to cut off unnecessary years*
+
+*Bristol Bay unmet in recent years?*
+
 ```{r, fig.align="center"}
 #It's easier to compare by region and year with less columns, but we still need to stretch out the y axis
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
@@ -311,11 +373,31 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~SASAP.Region, ncol = 2) + 
     theme_minimal() +
-    scale_fill_brewer(palette="Paired")
+    scale_fill_brewer(palette="greens")
 ```
-```{r, fig.align="center", fig.width=6}
+
+  
+*This plot still needs some work*
+```{r, fig.align="center", fig.height=5}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol=1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+**Check to ensure species plotted are actually those with goals: compare to a table**
+
+**Investigate 0 values: ex. Bristol Bay chum and pink**
+
+```{r, fig.align="center", fig.width=11, fig.heigh=8}
 ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
-    geom_line(size=1.25) + 
+    geom_line(size=1) + 
     labs(title = "Annual Lower Goal Achievement",
          x = "Year", 
          y = "Proportion of Years Met") +
@@ -324,19 +406,8 @@ ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species))
     theme_minimal() +
     scale_color_brewer(palette="Paired")
 ```
-```{r, fig.align="center"}
-# Percent of goals met over time, grouped by species
- ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
-     geom_line() +
-     xlab("Sample Year") + 
-     ylab("Percent of Goals Met") +
-     scale_y_continuous(labels=scales::percent) + 
-     facet_wrap(~SASAP.Region) +
-     theme_minimal() +
-    scale_color_brewer(palette="Paired")
-```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 #Trying to figure out a better way to visualize this. We can look at "unmet" and "exceeded" as error
 # Percent of goals met over time, grouped by species
  ggplot(data = percents, aes(x = sampleYear, xmin=min(sampleYear), y = percentMetLower, ymin=min(percentMetLower), ymax=max(percentMetLower), color=Species)) + 
@@ -349,3 +420,32 @@ ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species))
     scale_fill_brewer("Diamond\nclarity")
 ```
 
+Conclusion of general overview: *what do I want to say here?*
+
+###Body
+
+####Case Studies 
+
+[Ruggerone & Irvine, 2018](https://onlinelibrary.wiley.com/doi/pdf/10.1002/mcf2.10023)
+[Schindler, paleoecology](https://www.researchgate.net/publication/234142811_Centennial-Scale_Fluctuations_and_Regional_Complexity_Characterize_Pacific_Salmon_Population_Dynamics_Over_the_Past_Five_Centuries)
+
+Specific examples: "other species are doing well" (show that) "but let's take a look at chinook" (show examples); 
+
+Show across the board, big scale overview opening: use this as a way to show what's happening on the ground; 
+
+Use that as a segue to show what's going on on the grounds
+
+
+1.  What stocks are of harvest concern
+  * Species comparison: are we doing better for sockeye, pinks, and chum than we are for chinook?
+    - SEAK escapement issues: Chinook in Taku and Stikine 
+            -   putting these in the context of what the rest of the state is doing 
+            -   overall state is doing well, but exceptions
+  - Kuskokwim: compare chinook to other species 
+
+
+2.  Hard and fast assessment of how many escapement goals are being met 
+    * So what of overescapement? (see Daniel's paper)
+    *   Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from certain case studies, hard to see evidence of compensation (bending over of curb)
+    
+    
