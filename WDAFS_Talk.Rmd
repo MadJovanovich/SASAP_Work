@@ -11,16 +11,31 @@ output:
     toc_float: no
 ---
 
+
+
+
+**Do we have a tendency to exceed or go under?** 
+
+
+
+
 To Dos:
 
 * Lots of data QA still necessary
 * Change AK Pen & Aleutian name to something shorter to better fit plots? 
 * Definite consistent color schemes for different types of data visualizations
 
+
+
+
+
+
 ### Outline 
 
 Notes from meeting with Peter, 4/13/18:
 Story board out the talk: what do I want the take home message to be?
+
+
 
 Introduction
 
@@ -29,6 +44,8 @@ Introduction
 3.  Goal types: how are they picked, what they mean, leading into **definitions, including well-known systems with those types of goals (and mention why they management of the system may not exactly matcher the goal definition)**
 4.  A review of performance: proportion of time met/exceeded/under **plots**
 5.  Conclusion of the general overview **plots? written text**
+
+
 
 Body
 
@@ -50,6 +67,10 @@ Notes on presentations:
 *   Objectives: telling what I'm going to talk about 
 *   Telling my story: what is the timeline/storyline?
 
+
+
+
+
 ####[Munro & Volk 2016](http://www.adfg.alaska.gov/FedAidPDFs/FMS16-04.pdf), Figures; 2004-2012
 
 1.  Summary of 300 goals in effect during the 2012 spawning season
@@ -68,7 +89,10 @@ Notes on presentations:
     c)  exceeded upper bount of goal
     
 
-```{r, message=FALSE, warning=FALSE}
+
+
+
+```{r Packages, message=FALSE, warning=FALSE}
 library(knitr)
 library(dplyr)
 library(tidyr)
@@ -79,14 +103,26 @@ library(scales)
 library(viridis)
 ```
 
+
+
+
+
+###Data for plotting
+
+
+
+
 ####Color schemes
+
 
 * Region `scale_fill_brewer("Colors in Spectral", palette="Spectral")`
 
 * Species `scale_color_brewer(palette="Paired")`
 
 * Exceeded/met/unmet `scale_fill_brewwe(palette="greens")` for now, would like to change 
-```{r, echo=FALSE, eval=FALSE}
+
+
+```{r Color Schemes,  echo=FALSE, eval=FALSE}
 library(scales)
 show_col(hue_pal()(30))
 achievement_colors <- c(A = "#E58700", B = "#00BF7D", C ="F8766D")
@@ -99,15 +135,32 @@ simplePlot <- function(DT, tit)
 ```
 
 
-```{r}
+
+
+####Reading in data
+
+```{r Reading data}
 #Need to change to KNB url
-escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv")
+escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
 #escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
 #escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
 ```
 
 
-```{r, include=FALSE}
+
+Show there are no goals in the Arctic by adding a region to the data set
+```{r Arctic Region}
+Arctic <- data.frame("Arctic")
+colnames(Arctic) <- "SASAP.Region"
+AllRegions <- bind_rows(escapement_goals, Arctic)
+
+#Check to make sure thse binded appropriately
+ViewArctic <- AllRegions %>%
+  filter(SASAP.Region == "Arctic")
+#Looks good, so move on to plotting 
+```
+
+```{r Establishing Proportions of Achievement, include=FALSE}
 #Need to create a kable of this
 esc_goals_results <- escapement_goals %>%
     filter(!is.na(MetLower) | !is.na(MetUpper))
@@ -128,6 +181,17 @@ percents <- esc_goals_results %>%
 
 percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
 ```
+```{r}
+plottingdf <- bind_rows(esc_goals_results, Arctic)
+```
+
+Dataframes used throughout plotting 
+
+* escapement_goals: original data frame, created from joining cumulative escapement with escapement goals 
+* AllRegions: escapement_goals with the addition of one line to include the Arctic (to show lack of goals)
+* esc_goals_results: escapement_goals df with NA observations removed
+* percents: goal achievement evaluation 
+* plottingdf: percents df with the addition of the Arctic region 
 
 
 ###Introduction
@@ -285,9 +349,9 @@ The AAC also dictates fishing gear specifications and operations, district bound
 ####Exploring Escapement Goals
 
 Goal Types
-*I would like to add N by region to each bar, and decrease size of legend title and points*
-```{r, fig.align="center"}
-ggplot(data = esc_goals_results, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
+
+```{r Goals by Region, fig.align="center"}
+ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
     geom_bar() +
     labs(x = "Region",
          y = "Number of Goals", 
@@ -301,7 +365,7 @@ ggplot(data = esc_goals_results, aes(x = SASAP.Region, fill=factor(types), y=(..
 ```
 
 ```{r, fig.align="center", fig.width=6.5}
-ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
     geom_bar() +
     labs(x = "Year",
          y = "Number of Goals", 
@@ -321,7 +385,6 @@ ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..co
     labs(x = "Year",
          y = "Number of Goals", 
          title = "Escapement Goals by Species") +
-    ggtitle("Escapement Goals by Region") +
     theme_minimal() +
     theme(legend.text = element_text(size=8)) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
@@ -428,6 +491,7 @@ Conclusion of general overview: *what do I want to say here?*
 
 [Ruggerone & Irvine, 2018](https://onlinelibrary.wiley.com/doi/pdf/10.1002/mcf2.10023)
 [Schindler, paleoecology](https://www.researchgate.net/publication/234142811_Centennial-Scale_Fluctuations_and_Regional_Complexity_Characterize_Pacific_Salmon_Population_Dynamics_Over_the_Past_Five_Centuries)
+[Does more fish mean more money? Evaluating alternative Escapement Goals in the Bristol Bay Salmon Fishery](file:///Users/MadiMac/Documents/Does%20More%20Fish%20Mean%20More%20Money%3F%20.pdf)
 
 Specific examples: "other species are doing well" (show that) "but let's take a look at chinook" (show examples); 
 
@@ -437,15 +501,36 @@ Use that as a segue to show what's going on on the grounds
 
 
 1.  What stocks are of harvest concern
-  * Species comparison: are we doing better for sockeye, pinks, and chum than we are for chinook?
-    - SEAK escapement issues: Chinook in Taku and Stikine 
+    * Species comparison: are we doing better for sockeye, pinks, and chum than we are for chinook?
+      - SEAK escapement issues: Chinook in Taku and Stikine 
             -   putting these in the context of what the rest of the state is doing 
             -   overall state is doing well, but exceptions
-  - Kuskokwim: compare chinook to other species 
+      - Kuskokwim: compare chinook to other species 
 
 
 2.  Hard and fast assessment of how many escapement goals are being met 
     * So what of overescapement? (see Daniel's paper)
     *   Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from certain case studies, hard to see evidence of compensation (bending over of curb)
     
+3.  Does More Fish Mean More Money? Evaluating Alternative Escapement Goals in the Bristol Bay Salmon Fishery 
+    * Management strategy evaluation (MSE) for 4 sockeye districts
+        - Do increases in goals improve fishery outcomes for the industry and the region? 
+        - High escapement -> increase average runs towards biological MSY, which is driven by infrequent year of very abundant runs 
+        - Processors do not add capacity in response 
+        - Interannual variance in district-specific catch increases because years with little or no fishing become more frequent to meet higher escapement in low-run years, but **industry cannot capture greater value in the high-run years**
+        - In abundant runs, processors shift available labor to focus on high-volume, lower-margin products
+        - In very abundant years, insufficient processing capacity allows additional fish to escape         - Mobile drift-net vessels that can move to rivers experiencing high runs each year benefit,         - District specialists in the small boat and set-net fleets are more vulnerable to years with little or no catch
+    * Biological success, ecoomic failure (line 67, see Hilorn 2006)
+        -  others to explore opportunities to improve the economic performance (Link et al. 2003; Schelle 2004; Bue et al. 2008)
+        - Fishery scientists, economists, and many in the fishing industry have long recognized that economic performance of the Bristol Bay salmon fishery may not be optimized at MSY levels
+    * MSE techniques are being increasingly applied to help stakeholders and managers understand how variability and uncertainty affect the evolution of stock levels and anticipated biological yield under different harvest policies.
+    * Average of 37 million sockeye return across all 5 fishing districts 
+    * Up to 1500 driftnet vessels 
+    * 900 shore-based set-net operations 
+    * $400 million-dollar fishery provides essential food, jobs and economic activity in this isolated region of 6,000 residents (Knapp et al. 2013)
+    
+>  "To ensure sustainability, ADF&G establishes escapement goals—a desired range in the number of fish escaping capture in the commercial fishery and returning to the spawning grounds of each river—and permits fishing in the district at the mouth of each river only when escapement is at or above the historic arrival pace that supports meeting those escapement objectives. While larger escapements in most rivers are associated
+94 with higher expected future returns, historical observations at higher levels over the last 120 years are infrequent and outcomes ambiguous. This variability is reflected in the precautionary nature of the status quo escapement goals, labeled Current Sustainable Escapement Goals (SEG). Escapement is carefully tracked within the season at enumeration sites (counting towers or fixed sonar sites) on each river, and the number of landed fish is estimated on a daily basis from the observed weight of the catch, the Bristol Bay salmon fishery is perhaps the most intensively managed fishery in the world. It is Marine Stewardship Council certified."
+
+> "As part of an every-three-year review process using the latest stock-recruit data, Fair et al. (2012) suggested that raising the escapement goals—considerably for Egegik and Ugashik—to the Biological Escapement Goals (BEGs) in Table 2, would increase yield from the fishery. **Harvest achieved by targeting these BEGs was expected to more closely reflect maximum sustainable yield (MSY).** Alaska’s Policy for the Management of Sustainable Salmon Fisheries specifies that, to the extent possible, salmon fisheries are to be managed for MSY, which depends on sufficient historical stock-recruit data to define MSY escapement. (5 AAC 39.222)." 
     
