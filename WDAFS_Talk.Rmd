@@ -4,9 +4,12 @@ author: "Madeline Jovanovich"
 date: "4/13/2018"
 output: 
   html_document: 
-    toc: yes
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 8
     highlight: tango
     theme: paper
+    toc: yes
     toc_depth: 6
     toc_float: no
 ---
@@ -16,26 +19,16 @@ output:
 
 **Do we have a tendency to exceed or go under?** 
 
-
-
-
 To Dos:
 
 * Lots of data QA still necessary
 * Change AK Pen & Aleutian name to something shorter to better fit plots? 
 * Definite consistent color schemes for different types of data visualizations
 
-
-
-
-
-
 ### Outline 
 
 Notes from meeting with Peter, 4/13/18:
 Story board out the talk: what do I want the take home message to be?
-
-
 
 Introduction
 
@@ -44,8 +37,6 @@ Introduction
 3.  Goal types: how are they picked, what they mean, leading into **definitions, including well-known systems with those types of goals (and mention why they management of the system may not exactly matcher the goal definition)**
 4.  A review of performance: proportion of time met/exceeded/under **plots**
 5.  Conclusion of the general overview **plots? written text**
-
-
 
 Body
 
@@ -67,10 +58,6 @@ Notes on presentations:
 *   Objectives: telling what I'm going to talk about 
 *   Telling my story: what is the timeline/storyline?
 
-
-
-
-
 ####[Munro & Volk 2016](http://www.adfg.alaska.gov/FedAidPDFs/FMS16-04.pdf), Figures; 2004-2012
 
 1.  Summary of 300 goals in effect during the 2012 spawning season
@@ -87,12 +74,10 @@ Notes on presentations:
     a)  met goal
     b)  below lower bound of goal
     c)  exceeded upper bount of goal
-    
 
+###Data for plotting
 
-
-
-```{r Packages, message=FALSE, warning=FALSE}
+```{r Packages, message=FALSE, warning=FALSE, echo=FALSE}
 library(knitr)
 library(dplyr)
 library(tidyr)
@@ -103,40 +88,6 @@ library(scales)
 library(viridis)
 ```
 
-
-
-
-
-###Data for plotting
-
-
-
-
-####Color schemes
-
-
-* Region `scale_fill_brewer("Colors in Spectral", palette="Spectral")`
-
-* Species `scale_color_brewer(palette="Paired")`
-
-* Exceeded/met/unmet `scale_fill_brewwe(palette="greens")` for now, would like to change 
-
-
-```{r Color Schemes,  echo=FALSE, eval=FALSE}
-library(scales)
-show_col(hue_pal()(30))
-achievement_colors <- c(A = "#E58700", B = "#00BF7D", C ="F8766D")
-
-simplePlot <- function(DT, tit) 
-  ggplot(DT ,aes(x=Name, y=Value, fill=Group)) +
-  geom_bar(stat="identity") + xlab("") + ggtitle(tit) +
-  #Specify colours
-  scale_fill_manual(values=achievement_colors)
-```
-
-
-
-
 ####Reading in data
 
 ```{r Reading data}
@@ -144,12 +95,29 @@ simplePlot <- function(DT, tit)
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
 #escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
 #escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
+
+escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Peninsula and Aleutians"
+```
+
+####Color schemes
+
+* Region `scale_fill_brewer("Colors in Spectral", palette = "Spectral")`
+
+* Species `scale_color_brewer(palette = "Paired")`
+
+* Exceeded/met/unmet `scale_fill_brewwe(palette = "Greens")` for now, would like to change 
+
+
+```{r Color Schemes, echo=FALSE, include=FALSE}
+library(scales)
+show_col(hue_pal()(80))
+achievement_colors <- c(Unmet = "#FA7378", Met = "#00B92A", Exceeded ="#00C1AC")
+#These need to be improved! 
 ```
 
 
-
-Show there are no goals in the Arctic by adding a region to the data set
-```{r Arctic Region}
+Show there are no goals in the Arctic by adding a region to the data set: *this will be displayed in the table that shows # goals by region*
+```{r Arctic Region, warning = FALSE}
 Arctic <- data.frame("Arctic")
 colnames(Arctic) <- "SASAP.Region"
 AllRegions <- bind_rows(escapement_goals, Arctic)
@@ -170,18 +138,19 @@ sumna <- function(x) {
 }
 
 percents <- esc_goals_results %>%
-    select(SASAP.Region, Species, sampleYear, MetLower, MetUpper) %>%
-    group_by(sampleYear, SASAP.Region, Species) %>%
+    select(SASAP.Region, LocationID, Species, sampleYear, MetLower, MetUpper) %>%
+    group_by(sampleYear, SASAP.Region, LocationID, Species) %>%
     summarise(countMetLower = sumna(MetLower), 
               countMetUpper = sumna(MetUpper), 
               notMetUpper = sumna(!MetUpper), 
               notMetLower = sumna(!MetLower),
               percentMetUpper = (sumna(MetUpper)/(sumna(MetUpper) + sumna(!MetUpper))),
-              percentMetLower = (sumna(MetLower)/(sumna(MetLower) + sumna(!MetLower))))
+              percentMetLower = (sumna(MetLower)/(sumna(MetLower) + sumna(!MetLower)))) %>%
+    arrange(SASAP.Region, LocationID)
 
 percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
 ```
-```{r}
+```{r Joining original df to Arctic}
 plottingdf <- bind_rows(esc_goals_results, Arctic)
 ```
 
@@ -191,12 +160,13 @@ Dataframes used throughout plotting
 * AllRegions: escapement_goals with the addition of one line to include the Arctic (to show lack of goals)
 * esc_goals_results: escapement_goals df with NA observations removed
 * percents: goal achievement evaluation 
+  - also subsetted into regions (see plots below)
 * plottingdf: percents df with the addition of the Arctic region 
 
 
 ###Introduction
 
-####Policy
+####Policy: setting the stage for summary plots 
 
 Article II of the [Alaska Administrative Code](http://www.legis.state.ak.us/basis/aac.asp#5.39.212) pertains to the governanace of salmon fisheries. 
 
@@ -239,7 +209,9 @@ Terminology is outlined (only some terms selected here):
 
 - allocation criteria: means the factors set out in AS 16.05.251(e) considered by the board as appropriate to particular allocation decisions under 5 AAC 39.205, 5 AAC 75.017, and 5 AAC 77.007
 
-- **BEG, biological escapement goal: the escapement that provides the greatest potential for maximum sustained yield; the primary management objective for the escapement unless an optimal escapement or inriver run goal has been adopted; BEG will be developed from the best available biological information, and should be scientifically defensible on the basis of available biological information; BEG will be determined by the department and will be expressed as a range based on factors such as salmon stock productivity and data uncertainty; the department will seek to maintain evenly distributed salmon escapements within the bounds of a BEG**
+######BEG
+
+  biological escapement goal: the escapement that provides the greatest potential for maximum sustained yield; the primary management objective for the escapement unless an optimal escapement or inriver run goal has been adopted; BEG will be developed from the best available biological information, and should be scientifically defensible on the basis of available biological information; BEG will be determined by the department and will be expressed as a range based on factors such as salmon stock productivity and data uncertainty; the department will seek to maintain evenly distributed salmon escapements within the bounds of a BEG
 
 - conservation concern: concern arising from a chronic inability, despite the use of specific management measures, to maintain escapements for a stock above a sustained escapement threshold (SET); a conservation concern is more severe than a management concern
 
@@ -247,9 +219,13 @@ Terminology is outlined (only some terms selected here):
 
 - diversity: in a biological context, means the range of variation exhibited within any level of organization, such as among genotypes within a salmon population, among populations within a salmon stock, among salmon stocks within a species, among salmon species within a community, or among communities within an ecosystem
 
-- enhanced salmon stock: a stock of salmon that is undergoing specific manipulation, such as hatchery augmentation or lake fertilization, to enhance its productivity above the level that would naturally occur; includes an introduced stock, where no wild salmon stock had occurred before, or a wild salmon stock undergoing manipulation, but does not include a salmon stock undergoing rehabilitation, which is intended to restore a salmon stock's productivity to a higher natural level
+######Enhanced salmon stock
 
-- **escapement: the annual estimated size of the spawning salmon stock; quality of the escapement may be determined not only by numbers of spawners, but also by factors such as sex ratio, age composition, temporal entry into the system, and spatial distribution within the salmon spawning habitat**
+  a stock of salmon that is undergoing specific manipulation, such as hatchery augmentation or lake fertilization, to enhance its productivity above the level that would naturally occur; includes an introduced stock, where no wild salmon stock had occurred before, or a wild salmon stock undergoing manipulation, but does not include a salmon stock undergoing rehabilitation, which is intended to restore a salmon stock's productivity to a higher natural level
+
+######Escapement
+
+  the annual estimated size of the spawning salmon stock; quality of the escapement may be determined not only by numbers of spawners, but also by factors such as sex ratio, age composition, temporal entry into the system, and spatial distribution within the salmon spawning habitat
 
 - expanding fishery: a salmon fishery in which effective harvesting effort has recently increased significantly beyond historical levels and where the increase has not resulted from natural fluctuations in salmon abundance
 
@@ -259,7 +235,9 @@ Terminology is outlined (only some terms selected here):
 
 - habitat concern: the degradation of salmon habitat that results in, or can be anticipated to result in, impacts leading to yield, management, or conservation concerns
 
-- **harvestable surplus: the number of salmon from a stock's annual run that is surplus to escapement needs and can reasonably be made available for harvest**
+######Harvestable surplus
+
+  the number of salmon from a stock's annual run that is surplus to escapement needs and can reasonably be made available for harvest
 
 - healthy salmon stock: a stock of salmon that has annual runs typically of a size to meet escapement goals and a potential harvestable surplus to support optimum or maximum sustained yield
 
@@ -267,13 +245,19 @@ Terminology is outlined (only some terms selected here):
 
 - incidental mortality: the mortality imposed on a salmon stock outside of directed fishing, and mortality caused by incidental harvests, interaction with fishing gear, habitat degradation, and other human-related activities
 
-- **inriver run goal: a specific management objective for salmon stocks that are subject to harvest upstream of the point where escapement is estimated; the inriver run goal will be set in regulation by the board and is comprised of the SEG, BEG, or OEG, plus specific allocations to inriver fisheries**
+######Inriver run goal
+
+  a specific management objective for salmon stocks that are subject to harvest upstream of the point where escapement is estimated; the inriver run goal will be set in regulation by the board and is comprised of the SEG, BEG, or OEG, plus specific allocations to inriver fisheries
 
 - **management concern: a concern arising from a chronic inability, despite use of specific management measures, to maintain escapements for a salmon stock within the bounds of the SEG, BEG, OEG, or other specified management objectives for the fishery; a management concern is not as severe as a conservation concern**
 
-- **MSY, maximum sustained yield: the greatest average annual yield from a salmon stock; in practice, MSY is achieved when a level of escapement is maintained within a specific range on an annual basis, regardless of annual run strength; the achievement of MSY requires a high degree of management precision and scientific information regarding the relationship between salmon escapement and subsequent return; the concept of MSY should be interpreted in a broad ecosystem context to take into account species interactions, environmental changes, an array of ecosystem goods and services, and scientific uncertainty**
+######MSY, maximum sustained yield
 
-- **OEG, optimanl escapement goal: a specific management objective for salmon escapement that considers biological and allocative factors and may differ from the SEG or BEG; an OEG will be sustainable and may be expressed as a range with the lower bound above the level of SET, and will be adopted as a regulation by the board; the department will seek to maintain evenly distributed escapements within the bounds of the OEG**
+  the greatest average annual yield from a salmon stock; in practice, MSY is achieved when a level of escapement is maintained within a specific range on an annual basis, regardless of annual run strength; the achievement of MSY requires a high degree of management precision and scientific information regarding the relationship between salmon escapement and subsequent return; the concept of MSY should be interpreted in a broad ecosystem context to take into account species interactions, environmental changes, an array of ecosystem goods and services, and scientific uncertainty**
+
+######OEG, optimanl escapement goal
+
+  a specific management objective for salmon escapement that considers biological and allocative factors and may differ from the SEG or BEG; an OEG will be sustainable and may be expressed as a range with the lower bound above the level of SET, and will be adopted as a regulation by the board; the department will seek to maintain evenly distributed escapements within the bounds of the OEG
 
 - OSY, optimum sustained yield: an average annual yield from a salmon stock considered to be optimal in achieving a specific management objective other than maximum yield, such as achievement of a consistent level of sustained yield, protection of a less abundant or less productive salmon stock or species, enhancement of catch per unit effort in sport fishery, facilitation of a nonconsumptive use, facilitation of a subsistence use, or achievement of a specific allocation
 
@@ -300,7 +284,9 @@ Terminology is outlined (only some terms selected here):
 
 - **stock of concern: a stock of salmon for which there is a yield, management, or conservation concern::
 
-- **SEG, sustainable escapement goal: a level of escapement, indicated by an index or an escapement estimate, that is known to provide for sustained yield over a 5 to 10 year period, used in situations where a BEG cannot be estimated or managed for; the SEG is the primary management objective for the escapement, unless an optimal escapement or inriver run goal has been adopted by the board; the SEG will be developed from the best available biological information; and should be scientifically defensible on the basis of that information; the SEG will be determined by the department and will take into account data uncertainty and be stated as either a "SEG range" or "lower bound SEG"; the department will seek to maintain escapements within the bounds of the SEG range or above the level of a lower bound SEG**
+######SEG, sustainable escapement goal
+
+  a level of escapement, indicated by an index or an escapement estimate, that is known to provide for sustained yield over a 5 to 10 year period, used in situations where a BEG cannot be estimated or managed for; the SEG is the primary management objective for the escapement, unless an optimal escapement or inriver run goal has been adopted by the board; the SEG will be developed from the best available biological information; and should be scientifically defensible on the basis of that information; the SEG will be determined by the department and will take into account data uncertainty and be stated as either a "SEG range" or "lower bound SEG"; the department will seek to maintain escapements within the bounds of the SEG range or above the level of a lower bound SEG**
 
 - **sustainable salmon fishery: a salmon fishery that persists and obtains yields on a continuing basis; characterized by fishing activities and habitat alteration, if any, that do not cause or lead to undesirable changes in biological productivity, biological diversity, or ecosystem structure and function, from one human generation to the next**
 
@@ -314,7 +300,9 @@ Terminology is outlined (only some terms selected here):
 
 - yield concern: a concern arising from a chronic inability, despite the use of specific management measures, to maintain expected yields, or harvestable surpluses, above a stock's escapement needs; a yield concern is less severe than a management concern, which is less severe than a conservation concern
 
-- **wild salmon stock: a stock of salmon that originates in a specific location under natural conditions; may include an enhanced or rehabilitated stock if its productivity is augmented by supplemental means, such as lake fertilization or rehabilitative stocking; "wild salmon stock" does not include an introduced stock, except that some introduced salmon stocks may come to be considered "wild" if the stock is self-sustaining for a long period of time**
+######Wild salmon stock
+
+  a stock of salmon that originates in a specific location under natural conditions; may include an enhanced or rehabilitated stock if its productivity is augmented by supplemental means, such as lake fertilization or rehabilitative stocking; "wild salmon stock" does not include an introduced stock, except that some introduced salmon stocks may come to be considered "wild" if the stock is self-sustaining for a long period of time
 
 - action point: a threshold value for some quantitative indicator of stock run strength at which an explicit management action will be taken to achieve an optimal escapement goal
 
@@ -323,6 +311,7 @@ Terminology is outlined (only some terms selected here):
 
 "The DFG and the BoF are charged with the duty to conserve and develop Alaska's salmon fisheries on the sustained yield principle. Therefore, the establishment of salmon escapement goals is the responsibility of both the board and the department working collaboratively. The purpose of this policy is to establish the concepts, criteria, and procedures for establishing and modifying salmon escapement goals and to establish a process that facilitates public review of allocative issues associated with escapement goals."
 
+ ######ADF&G Responsibility
  
 "The board recognizes the department's responsibility to  
 
@@ -335,7 +324,9 @@ Terminology is outlined (only some terms selected here):
 7.  prepare a scientific analysis with supporting data whenever a new BEG, SEG, or SET, or a modification to an existing BEG, SEG, or SET is proposed and, in its discretion, to conduct independent peer reviews of its BEG, SEG, and SET analyses
 8.  notify the public whenever a new BEG, SEG, or SET is established or an existing BEG, SEG, or SET is modified
 9.  whenever allocative impacts arise from any management actions necessary to achieve a new or modified BEG, SEG or SET, report to the board on a schedule that conforms, to the extent practicable, to the board's regular cycle of consideration of area regulatory proposals so that it can address allocation issues."
-		
+
+######Board of Fish joing responibilities with ADF&G
+
 "In recognition of its joint responsibilities, and in consultation with the department, the board will  
 
 1.  take regulatory actions as may be necessary to address allocation issues arising from implementation of a new or modified BEG, SEG, and SET;  
@@ -343,13 +334,17 @@ Terminology is outlined (only some terms selected here):
 		
 "Unless the context requires otherwise, the terms used in this section have the same meaning given those terms in 5 AAC 39.222(f)."
 
+######Additional management responsibilites
 The AAC also dictates fishing gear specifications and operations, district boundaries; and in the past has addressed specialized management plans in the past, such as the AYK Region Chum Salmon Rebuilding Management Plan. 
 
 
-####Exploring Escapement Goals
+####Exploring Escapement Goals: summary visualizations
 
 Goal Types
 
+**Need to insert a table that shows # goal types by region, total # goals, total # of monitored systems**
+
+Need to fix AK Pen and Aleutians lable (for all plots/dfs)
 ```{r Goals by Region, fig.align="center"}
 ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
     geom_bar() +
@@ -357,78 +352,71 @@ ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
     ggtitle("Escapement Goals by Region") +
-    theme_minimal() +
+    theme_pander() +
     theme(legend.text = element_text(size=8)) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
-    scale_fill_brewer("Colors in Spectral", palette="Spectral")
+    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BED", "inRiver", "MT", "OEG", "SEG"))
 ```
 
-```{r, fig.align="center", fig.width=6.5}
+```{r Goals Faceted by Region, fig.align="center", fig.width=6.5}
 ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
-    geom_bar() +
+    geom_bar(width=1) +
     labs(x = "Year",
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
-    ggtitle("Escapement Goals by Region") +
-    theme_minimal() +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    theme_few() +
     theme(legend.text = element_text(size=8)) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
-    facet_wrap(~SASAP.Region, scales="free_y")
+    facet_wrap(~SASAP.Region, scales="free_y", ncol = 6)
+#I would like to try this as a geom_area, but I need to figure out the percents df beforehand 
 ```
-
-```{r, fig.align="center", fig.width=6.5}
+How can I create my theme? 
+```{r Goals by Species, fig.align="center", fig.width=6.5}
 ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
     geom_bar() +
     labs(x = "Year",
          y = "Number of Goals", 
          title = "Escapement Goals by Species") +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     theme_minimal() +
     theme(legend.text = element_text(size=8)) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
-    facet_wrap(~Species, scales="free_y", ncol=2)
+    facet_wrap(~Species, scales="free_y", ncol=1)
 ```
 
 Review of Performance
 
 *Years that all = 100% are suspect, need some QA*
 
-```{r, fig.align="center", warning=FALSE}
+```{r Statewide Goal Achievement, fig.align="center", warning=FALSE}
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
-    geom_bar(position='fill') +
-    xlab("Year") + 
-    ylab("Proportion of Years Achieved") +
-    ggtitle("Annual Goal Achievement, Statewide") +
+    geom_bar(position='fill', width = 1) +
+    labs( x = "Year", 
+          y = "Proportion of Years Achieved", 
+          title = "Annual Goal Achievement, Statewide") +
     scale_y_continuous(labels=scales::percent) + 
+    scale_x_continuous(breaks = pretty_breaks(n = 5)) +
     guides(fill=guide_legend(title="")) + 
-    theme_minimal() +
-    scale_fill_brewer(palette="greens")
-```
-```{r, fig.align="center", eval=FALSE, include=FALSE}
-#Why is scale_fill_manual not working? 
-ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
-    geom_bar(position='fill') +
-    xlab("Year") + 
-    ylab("Percentage Achieved") +
-    ggtitle("Annual Goal Achievement, Statewide") +
-    scale_y_continuous(labels=scales::percent) + 
-    guides(fill=guide_legend(title="")) + 
-    theme_minimal() +
-    scale_fill_manual(values=c(A = "#E58700", B = "#00BF7D", C ="F8766D"))
+    theme_minimal() + 
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
+#We're getting there with the colors
 ```
 
 *Need to cut off unnecessary years*
 
-*Bristol Bay unmet in recent years?*
+*Bristol Bay unmet in recent years? Need to QA the data: plot by region, facet by species*
 
-```{r, fig.align="center"}
+
+```{r Goal Achievement by Region, fig.align="center"}
 #It's easier to compare by region and year with less columns, but we still need to stretch out the y axis
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
-    geom_bar(position='fill') +
+    geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
          y = "Percentage Achieved", 
          title = "Annual Goal Achievement") +
@@ -436,17 +424,186 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~SASAP.Region, ncol = 2) + 
     theme_minimal() +
-    scale_fill_brewer(palette="greens")
+    scale_fill_brewer(palette="Greens")
+```
+```{r QA Goal Achievement Subsetting, echo = FALSE}
+AKAlpercents <- subset(percents, SASAP.Region == "AK Peninsula and Aleutians")
+BBpercents <- subset(percents, SASAP.Region == "Bristol Bay")
+CHIGpercents <- subset(percents, SASAP.Region == "Chignik")
+CIpercents <- subset(percents, SASAP.Region == "Cook Inlet")
+CRpercents <- subset(percents, SASAP.Region == "Copper River")
+KODpercents <- subset(percents, SASAP.Region == "Kodiak")
+KUSKOpercents <- subset(percents, SASAP.Region == "Kuskokwim")
+KOTZpercents <- subset(percents, SASAP.Region == "Kotzebue")
+NSpercents <- subset(percents, SASAP.Region == "Norton Sound")
+PWSpercents <- subset(percents, SASAP.Region == "Prince William Sound")
+SEpercents <- subset(percents, SASAP.Region == "Southeast")
+YUKpercents <- subset(percents, SASAP.Region == "Yukon")
+```
+```{r QA AK Pen and Aleutians}
+ggplot(data = AKAlpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Peninsula and Aleutians") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol=1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "Reds")
+```
+```{r QA Bristol Bay}
+ggplot(data = BBpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Bristol Bay") + 
+    scale_y_continuous(labels=percent) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol=1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "Greens")
+```
+```{r QA Chignik}
+ggplot(data = CHIGpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Chignik") + 
+    scale_y_continuous(labels=percent) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol=1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "Greens")
+```
+```{r QA Cook Inlet}
+ggplot(data = CIpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Cook Inlet") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Copper River}
+ggplot(data = CRpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Copper River") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Kodiak}
+ggplot(data = KODpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Kodiak") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Kotzebue}
+ggplot(data = KOTZpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Kotzebue") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Kuskokwim}
+ggplot(data = KUSKOpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Kuskokwim") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Norton Sound}
+ggplot(data = NSpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Norton Sound") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Prince William Sound}
+ggplot(data = PWSpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Prince William Sound", 
+         subtitle = "excluding Copper River") +
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Southeast}
+ggplot(data = SEpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Southeast") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
+```
+
+```{r QA Yukon}
+ggplot(data = YUKpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Yukon") + 
+    scale_y_continuous(labels=percent) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol = 1, scales="free_y") + 
+    theme_minimal() +
+    scale_fill_brewer(palette = "greens")
 ```
 
   
 *This plot still needs some work*
-```{r, fig.align="center", fig.height=5}
+```{r Goal Achievement by Species, fig.align="center"}
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
          y = "Percentage Achieved", 
-         title = "Annual Goal Achievement") + 
+         title = "Annual Goal Achievement by Species") + 
     scale_y_continuous(labels=percent) +
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol=1, scales="free_y") + 
@@ -458,9 +615,9 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
 
 **Investigate 0 values: ex. Bristol Bay chum and pink**
 
-```{r, fig.align="center", fig.width=11, fig.heigh=8}
+```{r Lower Goal Achievement Faceted by Region, fig.align="center"}
 ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
-    geom_line(size=1) + 
+    geom_line() + 
     labs(title = "Annual Lower Goal Achievement",
          x = "Year", 
          y = "Proportion of Years Met") +
@@ -470,7 +627,7 @@ ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species))
     scale_color_brewer(palette="Paired")
 ```
 
-```{r, eval=FALSE, include=FALSE}
+```{r Attempting to visualize achievement as error, eval=FALSE, include=FALSE}
 #Trying to figure out a better way to visualize this. We can look at "unmet" and "exceeded" as error
 # Percent of goals met over time, grouped by species
  ggplot(data = percents, aes(x = sampleYear, xmin=min(sampleYear), y = percentMetLower, ymin=min(percentMetLower), ymax=max(percentMetLower), color=Species)) + 
@@ -490,8 +647,6 @@ Conclusion of general overview: *what do I want to say here?*
 ####Case Studies 
 
 [Ruggerone & Irvine, 2018](https://onlinelibrary.wiley.com/doi/pdf/10.1002/mcf2.10023)
-[Schindler, paleoecology](https://www.researchgate.net/publication/234142811_Centennial-Scale_Fluctuations_and_Regional_Complexity_Characterize_Pacific_Salmon_Population_Dynamics_Over_the_Past_Five_Centuries)
-[Does more fish mean more money? Evaluating alternative Escapement Goals in the Bristol Bay Salmon Fishery](file:///Users/MadiMac/Documents/Does%20More%20Fish%20Mean%20More%20Money%3F%20.pdf)
 
 Specific examples: "other species are doing well" (show that) "but let's take a look at chinook" (show examples); 
 
@@ -500,18 +655,46 @@ Show across the board, big scale overview opening: use this as a way to show wha
 Use that as a segue to show what's going on on the grounds
 
 
-1.  What stocks are of harvest concern
+#####Goal Achievement and Overescapement: brood tables and spawner-recruit relationships
+
+1.  Hard and fast assessment of how many escapement goals are being met 
+    * What's the deal with overescapement?  
+        [Schindler, paleoecology](https://www.researchgate.net/publication/234142811_Centennial-Scale_Fluctuations_and_Regional_Complexity_Characterize_Pacific_Salmon_Population_Dynamics_Over_the_Past_Five_Centuries)
+          - it may not be an issue in Bristol Bay, but is it an issue elsewhere? 
+    * Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from case studies (hard to see evidence of compensation/bending over of curb)
+
+```{r Read-in Compiled Brood Tables}
+
+```
+
+Show mean, min, and max of brood tables across regions? 
+
+Should I select a timeframe that works for all tables/datasets? 
+
+Focus on Western AK sockeye: that is where the data abundance is
+
+Focus on Chinook: conservation case studies, comparison among regions
+
+#####Stocks of harvest concern 
+
+2.  What stocks are of harvest concern
     * Species comparison: are we doing better for sockeye, pinks, and chum than we are for chinook?
       - SEAK escapement issues: Chinook in Taku and Stikine 
             -   putting these in the context of what the rest of the state is doing 
             -   overall state is doing well, but exceptions
       - Kuskokwim: compare chinook to other species 
+      
+######Kuskowim Chinook compared to other species 
 
+* Set the stage with background on conservation fishing and issues 
+* Explain differences and similaries in fisheries: subsistence versus commercial; all other species against Chinook
+  - Explain utilization differences
+  
+  
+#####Bristol Bay Sockeye: the most intensely managed fishery in the world? 
 
-2.  Hard and fast assessment of how many escapement goals are being met 
-    * So what of overescapement? (see Daniel's paper)
-    *   Spawner-recruit relationships: brood table plotting, plot recruit/spawner relationships from certain case studies, hard to see evidence of compensation (bending over of curb)
-    
+[Does more fish mean more money? Evaluating alternative Escapement Goals in the Bristol Bay Salmon Fishery](file:///Users/MadiMac/Documents/Does%20More%20Fish%20Mean%20More%20Money%3F%20.pdf)
+
 3.  Does More Fish Mean More Money? Evaluating Alternative Escapement Goals in the Bristol Bay Salmon Fishery 
     * Management strategy evaluation (MSE) for 4 sockeye districts
         - Do increases in goals improve fishery outcomes for the industry and the region? 
@@ -519,7 +702,9 @@ Use that as a segue to show what's going on on the grounds
         - Processors do not add capacity in response 
         - Interannual variance in district-specific catch increases because years with little or no fishing become more frequent to meet higher escapement in low-run years, but **industry cannot capture greater value in the high-run years**
         - In abundant runs, processors shift available labor to focus on high-volume, lower-margin products
-        - In very abundant years, insufficient processing capacity allows additional fish to escape         - Mobile drift-net vessels that can move to rivers experiencing high runs each year benefit,         - District specialists in the small boat and set-net fleets are more vulnerable to years with little or no catch
+        - In very abundant years, insufficient processing capacity allows additional fish to escape         
+        - Mobile drift-net vessels that can move to rivers experiencing high runs each year benefit,         
+        - District specialists in the small boat and set-net fleets are more vulnerable to years with little or no catch
     * Biological success, ecoomic failure (line 67, see Hilorn 2006)
         -  others to explore opportunities to improve the economic performance (Link et al. 2003; Schelle 2004; Bue et al. 2008)
         - Fishery scientists, economists, and many in the fishing industry have long recognized that economic performance of the Bristol Bay salmon fishery may not be optimized at MSY levels
@@ -529,8 +714,71 @@ Use that as a segue to show what's going on on the grounds
     * 900 shore-based set-net operations 
     * $400 million-dollar fishery provides essential food, jobs and economic activity in this isolated region of 6,000 residents (Knapp et al. 2013)
     
->  "To ensure sustainability, ADF&G establishes escapement goals—a desired range in the number of fish escaping capture in the commercial fishery and returning to the spawning grounds of each river—and permits fishing in the district at the mouth of each river only when escapement is at or above the historic arrival pace that supports meeting those escapement objectives. While larger escapements in most rivers are associated
-94 with higher expected future returns, historical observations at higher levels over the last 120 years are infrequent and outcomes ambiguous. This variability is reflected in the precautionary nature of the status quo escapement goals, labeled Current Sustainable Escapement Goals (SEG). Escapement is carefully tracked within the season at enumeration sites (counting towers or fixed sonar sites) on each river, and the number of landed fish is estimated on a daily basis from the observed weight of the catch, the Bristol Bay salmon fishery is perhaps the most intensively managed fishery in the world. It is Marine Stewardship Council certified."
+>  "To ensure sustainability, ADF&G establishes escapement goals—a desired range in the number of fish escaping capture in the commercial fishery and returning to the spawning grounds of each river—and permits fishing in the district at the mouth of each river **only when escapement is at or above the historic arrival pace that supports meeting those escapement objectives.** While larger escapements in most rivers are associated with higher expected future returns, historical observations at higher levels over the last 120 years are infrequent and outcomes ambiguous. This variability is reflected in the precautionary nature of the status quo escapement goals, labeled Current Sustainable Escapement Goals (SEG). Escapement is carefully tracked within the season at enumeration sites (counting towers or fixed sonar sites) on each river, and the number of landed fish is estimated on a daily basis from the observed weight of the catch, the Bristol Bay salmon fishery is perhaps the most intensively managed fishery in the world. It is Marine Stewardship Council certified."
 
-> "As part of an every-three-year review process using the latest stock-recruit data, Fair et al. (2012) suggested that raising the escapement goals—considerably for Egegik and Ugashik—to the Biological Escapement Goals (BEGs) in Table 2, would increase yield from the fishery. **Harvest achieved by targeting these BEGs was expected to more closely reflect maximum sustainable yield (MSY).** Alaska’s Policy for the Management of Sustainable Salmon Fisheries specifies that, to the extent possible, salmon fisheries are to be managed for MSY, which depends on sufficient historical stock-recruit data to define MSY escapement. (5 AAC 39.222)." 
+> "As part of an every-three-year review process using the latest stock-recruit data, Fair et al. (2012) **suggested that raising the escapement goals—considerably for Egegik and Ugashik—to the Biological Escapement Goals (BEGs) in Table 2, would increase yield from the fishery. Harvest achieved by targeting these BEGs was expected to more closely reflect maximum sustainable yield (MSY).** Alaska’s Policy for the Management of Sustainable Salmon Fisheries specifies that, to the extent possible, salmon fisheries are to be managed for MSY, which depends on sufficient historical stock-recruit data to define MSY escapement. (5 AAC 39.222)." 
+
+![Table 2](/Users/MadiMac/SASAP Work/'Mo fish 'mo money plots/Table 2.png)
+
+MSY: greater fish availability = more fish to sell -> more fishing income and jobs 
+
+  * may also provide alternative benefits to freshwater ecosystems and salmon-dependent predator communities (Levi et al., 2012)
+  * Industry and local communities depend on low catch variance and tax revenue; have resisted increaing goals and encouraged caution in doing so. 
+    - highly variable fishery = increasing goals has potential to result in two side effects of questionaable desirability  from fishery revenue perspective
+      1.  a potential increase in the frequency of low run years in which less (or no) harvest will be allowed to achieve the higher escapement targets. Low run years are relatively frequent, and times of no harvest are devastating to rural Alaska communities who are heavily dependent on salmon revenue.
+      2.  there will be slightly more frequent very high run years. From a management perspective, the theoretical yield under the escapement goals proposed by Fair et al. (2012) would represent a huge potential harvest, but the fishery lacks the capacity to process potential catches during recent years of high runs.
+      - Many in the industry see increased escapement goals as increasing vulnerability in exchange for larger average runs that provide little or no upside for fishery participants. ADF&G thus proposed a more modest change, the Proposed SEG line in Table 2. 
+
+>Bue et al. (2008) showed that economic profitability was influenced by limits on processing and harvesting capacity, and industry intuitively understood that bigger runs do not translate directly into greater economic performance.
+      
+  * Industry, ADF&G, and other scientists came together to recommend goals that would take economics into account
+  
+>Current bay-wide processing capacity is around 1.8 million fish per day. 
+
+One day of high catch has two consequences for processors: 
+
+  1. **Limits** are part of the strategy for handling considerable inter-annual volatility 
+    - not popular among fishermen 
+    - escapement allowed during limits does not provie value to the industry in the current year
+    - building plants to accommodate max run size, but not practical with about 2 days on limits roughly every 2-5 years
+    - suggesting that the value of these additional fish could be captured during limit periods is no sufficient to cover the cost of maintaining excess processing capacity in the remaining 3-out-of-5 years
+  2. **Accelerating processing rates** 
+    - geographic isolation of Bristol Bay restricts staffing and stocking levels to be based on preseason run size forecasts, supplied by ADF&G and UW FRI (physical inputs barged in during spring, laborers flown up preseason)
+    - additional supplied cannot be accessed in relevant timeline once actual extent of run in realized
+    - solution = accelarate fish utilization by redeploying labor onto product lines that can process more fish per effort hour
+        - fillet lines, h&g, canning 
+        - producing products of generall lower margin 
+    - product composition depends on the observed run size and timing = cannot project market into which they will be selling (prices received per pound of landed fish)
     
+      
+> The bioeconomic picture of Bristol Bay is a complex one, where the value of the catch is limited by available fish in low-run years, but also by processing capacity in high run years. The value of fish on peak run days is eroded through processing into lower value products; in the highest run years, this value is entirely dissipated because capacity constraints allow it to escape. As a result, increases in average run size that also increase the variance of potential catch may not result in more fish being landed and processed, leading some authors to suggest a constant harvest management strategy (Steiner et al. 2011). Further, increasing catch variability is not distributionally neutral because, while individual-river variability can be mitigated by switching to other rivers during the season, harvesters differ in their ability to do this.       
+      
+Understanding how three proposed escapement goal policies attain economic and community objectives for the fishery therefore requires:
+
+  - modeling the stock
+  - modeling how participants in the harvest and post-harvest sectors react to run size variability
+  
+Harvests, and thus stock size and fishery benefits, will be based on processors’ long-run plant scale choices, which will dictate the size of the work force chosen operate the lines they can keep busy most days of the season, and in turn constrain the product mix, which is determined by the shape and timing of the run as much as its size. This paper describes an integrated bioeconomic management strategy evaluation (MSE) that quantifies the tradeoff between the average yield and the variance in yield, which provided regulators with guidance on designing harvest policies for environments where production variability is a major factor in shaping outcomes for industry and fishing communities. 
+      
+MSE Methods: models are used as the basis for 100-year forward simulations of stock and processing industry, project mean and variance of revenues to key participants under alternative escapement goal policies 
+
+  1.  Stock-recruitment model: uses historical data to specify relationship between escapement and subsequent returns of sockeye. Interacts with a model that simulates managers' decisions, based on in-season information. 
+  2.  Processor Product Form Choice: 
+      a)  long run choice of plant scale 
+      b)  pre-season choice of staffing level
+      c)  daily choice of product form, based on daily landings 
+  3.  Pricing model: annual price flexibility of the dominant salmon products produced 
+  4.  Forward Simulation: lnk processor revenue and product mix to a division of revenue betwen processors and harvestors
+  
+  
+    *So for my understanding: Increasing current SEGs to higher levels will increase escapement needed before openings are allowed, therefore decreasing fishing opportunitiy during maximum years (but not making any change during low volume years?); This would in-turn decrease frequency of limits imposed by processors, allowing more consistent products manufactored, which would allow for a more consistent market, and therefore give fishermen a more consistent exvessel price. Correct? So what about other fisheries that don't have these variance issues?*
+    
+**Still need to go through results and apply appropriate tables and figures**
+      
+      
+      
+      
+      
+      
+      
+      
