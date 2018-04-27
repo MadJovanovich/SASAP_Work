@@ -5,8 +5,8 @@ date: "4/13/2018"
 output: 
   html_document: 
     fig_caption: yes
-    fig_height: 6
-    fig_width: 8
+    fig_height: 8
+    fig_width: 10
     highlight: tango
     theme: paper
     toc: yes
@@ -15,15 +15,19 @@ output:
 ---
 
 
+Begin presentation with the "integrated approach": what needed to be done to get to this point? 
 
+* one slide on the process and collaboration for the data used here 
 
 **Do we have a tendency to exceed or go under?** 
 
 To Dos:
 
 * Lots of data QA still necessary
-* Change AK Pen & Aleutian name to something shorter to better fit plots? 
+  - see Bristol Bay achievement plot
+  - statewide plot: why aren't all goals appearing? 
 * Definite consistent color schemes for different types of data visualizations
+* Ensure aspect ratios are appropriate for viewing
 
 ### Outline 
 
@@ -96,7 +100,7 @@ escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = F
 #escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
 #escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
 
-escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Peninsula and Aleutians"
+#escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Peninsula and Aleutians"
 ```
 
 ####Color schemes
@@ -127,7 +131,18 @@ ViewArctic <- AllRegions %>%
   filter(SASAP.Region == "Arctic")
 #Looks good, so move on to plotting 
 ```
+```{r Subsetting for Run Timing, eval=FALSE}
 
+BB_esc <- subset(escapement_daily, SASAP.Region == "Bristol Bay")
+BB_sockeye <- subset(BB_esc, Species == "sockeye")
+
+ggplot(BB_sockeye, aes(x=sampleDate, y = DailyCount)) +
+  geom_point() + 
+  scale_x_discrete(breaks = pretty_breaks(n = 100))
+
+#ave_RunTiming <- BB_sockeye %>%
+  
+```
 ```{r Establishing Proportions of Achievement, include=FALSE}
 #Need to create a kable of this
 esc_goals_results <- escapement_goals %>%
@@ -344,7 +359,7 @@ Goal Types
 
 **Need to insert a table that shows # goal types by region, total # goals, total # of monitored systems**
 
-Need to fix AK Pen and Aleutians lable (for all plots/dfs)
+Where are BEGs? Why aren't all goals appearing in this plot? Besides that, the design of this plot looks good. 
 ```{r Goals by Region, fig.align="center"}
 ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
     geom_bar() +
@@ -352,26 +367,31 @@ ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
     ggtitle("Escapement Goals by Region") +
-    theme_pander() +
-    theme(legend.text = element_text(size=8)) +
+    theme_hc() +
+    theme(legend.text = element_text(size=8), aspect.ratio = 0.5, legend.position = "right") +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BED", "inRiver", "MT", "OEG", "SEG"))
 ```
 
-```{r Goals Faceted by Region, fig.align="center", fig.width=6.5}
+Since theme_hc() doesn't look great when faceting, maybe I should create my own theme: 
+
+* remove vertical lines, retain horizontal
+* no background on facet titles 
+* legend.position = "right"
+```{r Goals Faceted by Region, fig.align="center"}
 ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
     geom_bar(width=1) +
     labs(x = "Year",
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
     scale_x_continuous(breaks = pretty_breaks(n = 10)) +
-    theme_few() +
-    theme(legend.text = element_text(size=8)) +
-    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    theme_hc() +
+    theme(legend.text = element_text(size=8), legend.title=element_text(size=10), legend.position = "right") +
+    guides(fill=guide_legend("Goal Type")) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
-    facet_wrap(~SASAP.Region, scales="free_y", ncol = 6)
+    facet_wrap(~SASAP.Region, scales="free_y", ncol = 4)
 #I would like to try this as a geom_area, but I need to figure out the percents df beforehand 
 ```
 How can I create my theme? 
@@ -383,9 +403,8 @@ ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..co
          title = "Escapement Goals by Species") +
     scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     theme_minimal() +
-    theme(legend.text = element_text(size=8)) +
+    theme(legend.text = element_text(size=8), axis.text.x = element_text(angle = 50, hjust = 0.95), aspect.ratio = 0.2) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
-    theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
     facet_wrap(~Species, scales="free_y", ncol=1)
 ```
@@ -440,7 +459,7 @@ PWSpercents <- subset(percents, SASAP.Region == "Prince William Sound")
 SEpercents <- subset(percents, SASAP.Region == "Southeast")
 YUKpercents <- subset(percents, SASAP.Region == "Yukon")
 ```
-```{r QA AK Pen and Aleutians}
+```{r QA AK Pen and Aleutians, eval=FALSE}
 ggplot(data = AKAlpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
