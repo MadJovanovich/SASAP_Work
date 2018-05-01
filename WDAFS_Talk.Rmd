@@ -143,8 +143,10 @@ ggplot(BB_sockeye, aes(x=sampleDate, y = DailyCount)) +
 #ave_RunTiming <- BB_sockeye %>%
   
 ```
-```{r Establishing Proportions of Achievement, include=FALSE}
+```{r Establishing Proportions of Achievement I, include=FALSE}
 #Need to create a kable of this
+#Do I really want to remove NA values? If they are included in the df, I can show locations of annual counts with no goals
+#that way, esc_goals_results would retains NAs, percents would omit them
 esc_goals_results <- escapement_goals %>%
     filter(!is.na(MetLower) | !is.na(MetUpper))
 
@@ -165,6 +167,9 @@ percents <- esc_goals_results %>%
 
 percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
 ```
+
+
+
 ```{r Joining original df to Arctic}
 plottingdf <- bind_rows(esc_goals_results, Arctic)
 ```
@@ -182,6 +187,29 @@ Dataframes used throughout plotting
 ###Introduction
 
 ####Policy: setting the stage for summary plots 
+
+[Frequently Used Policies of the Alaska Board of Fisheries](http://www.adfg.alaska.gov/static/regulations/regprocess/fisheriesboard/pdfs/2016-2017/common_used_policies.pdf)
+
+[Sustaining Alaska's Fisheries](https://www.adfg.alaska.gov/static/fishing/PDFs/50years_cf/sustain_wild2000s.pdf)
+
+  **  * SUstainable Salmon Policy Established in 2000, followed by stamp of approcal from the Marine Stewardship Council 
+
+#####Alaska's Wild Salmon, ADF&G book: 
+
+Alaska's Sustainable Salmon Fisheries Policy
+
+* Adopted by ADF&G and BOF in March, 2000
+
+* Organizes salmon management research efforts around 5 guiding principles and associated criteria 
+
+  - Directs salmon managers and BOF to follow a systematic process for evaluating health of stocks throughout AK 
+  
+  - Respond promptly with research and management action plans if stock found to be critically weak
+  
+  - Used to gauge sustainability of specific salmon stocks and overall effectivness of state's approach to conservations and mgmt
+  
+  - Requires "safe passage" for salmon throughout fw, estuary, and ocean habitats
+
 
 Article II of the [Alaska Administrative Code](http://www.legis.state.ak.us/basis/aac.asp#5.39.212) pertains to the governanace of salmon fisheries. 
 
@@ -326,7 +354,7 @@ Terminology is outlined (only some terms selected here):
 
 "The DFG and the BoF are charged with the duty to conserve and develop Alaska's salmon fisheries on the sustained yield principle. Therefore, the establishment of salmon escapement goals is the responsibility of both the board and the department working collaboratively. The purpose of this policy is to establish the concepts, criteria, and procedures for establishing and modifying salmon escapement goals and to establish a process that facilitates public review of allocative issues associated with escapement goals."
 
- ######ADF&G Responsibility
+######ADF&G Responsibility
  
 "The board recognizes the department's responsibility to  
 
@@ -358,6 +386,8 @@ The AAC also dictates fishing gear specifications and operations, district bound
 Goal Types
 
 **Need to insert a table that shows # goal types by region, total # goals, total # of monitored systems**
+
+#####Goals by Region
 
 Where are BEGs? Why aren't all goals appearing in this plot? Besides that, the design of this plot looks good. 
 ```{r Goals by Region, fig.align="center"}
@@ -394,6 +424,9 @@ ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))
     facet_wrap(~SASAP.Region, scales="free_y", ncol = 4)
 #I would like to try this as a geom_area, but I need to figure out the percents df beforehand 
 ```
+
+#####Goals by Species
+
 How can I create my theme? 
 ```{r Goals by Species, fig.align="center", fig.width=6.5}
 ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
@@ -409,7 +442,7 @@ ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..co
     facet_wrap(~Species, scales="free_y", ncol=1)
 ```
 
-Review of Performance
+#####Review of Performance
 
 *Years that all = 100% are suspect, need some QA*
 
@@ -447,7 +480,8 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
 ```
 ```{r QA Goal Achievement Subsetting, echo = FALSE}
 AKAlpercents <- subset(percents, SASAP.Region == "AK Peninsula and Aleutians")
-BBpercents <- subset(percents, SASAP.Region == "Bristol Bay")
+BBpercents <- subset(percents, SASAP.Region == "Bristol Bay") %>%
+  arrange(Species, sampleYear, LocationID)
 CHIGpercents <- subset(percents, SASAP.Region == "Chignik")
 CIpercents <- subset(percents, SASAP.Region == "Cook Inlet")
 CRpercents <- subset(percents, SASAP.Region == "Copper River")
@@ -483,6 +517,8 @@ ggplot(data = BBpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(
     facet_wrap(~Species, ncol=1, scales="free_y") + 
     theme_minimal() +
     scale_fill_brewer(palette = "Greens")
+
+BB_sockeye <- subset(BBpercents, Species == "sockeye") %>% arrange(sampleYear)
 ```
 ```{r QA Chignik}
 ggplot(data = CHIGpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
