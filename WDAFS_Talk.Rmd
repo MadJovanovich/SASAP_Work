@@ -14,6 +14,10 @@ output:
     toc_float: no
 ---
 
+BB QA ISSUE: NEED TO FLAG/ADD NOTE, AND POSSIBLY EXCLUDE 2017 FROM DATA SET 
+
+NEED TO PLOT # GOALS BY SPECIES, FACET BY REGION 
+
 
 Begin presentation with the "integrated approach": what needed to be done to get to this point? 
 
@@ -101,6 +105,8 @@ escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = F
 #escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
 
 #escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Peninsula and Aleutians"
+
+#cunningham_data <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A12142948-71d0-48f6-a44b-3fad3802aaec", stringsAsFactors = FALSE)
 ```
 
 ####Color schemes
@@ -119,7 +125,6 @@ achievement_colors <- c(Unmet = "#FA7378", Met = "#00B92A", Exceeded ="#00C1AC")
 #These need to be improved! 
 ```
 
-
 Show there are no goals in the Arctic by adding a region to the data set: *this will be displayed in the table that shows # goals by region*
 ```{r Arctic Region, warning = FALSE}
 Arctic <- data.frame("Arctic")
@@ -131,6 +136,7 @@ ViewArctic <- AllRegions %>%
   filter(SASAP.Region == "Arctic")
 #Looks good, so move on to plotting 
 ```
+
 ```{r Subsetting for Run Timing, eval=FALSE}
 
 BB_esc <- subset(escapement_daily, SASAP.Region == "Bristol Bay")
@@ -141,22 +147,69 @@ ggplot(BB_sockeye, aes(x=sampleDate, y = DailyCount)) +
   scale_x_discrete(breaks = pretty_breaks(n = 100))
 
 #ave_RunTiming <- BB_sockeye %>%
-  
 ```
-```{r Establishing Proportions of Achievement I, include=FALSE}
+
+```{r QA Data}
+BB_sockeye_Cunningham <- subset(cunningham_data, Species == "sockeye") %>%
+  arrange(desc(sampleDate))
+
+plottingdf$sampleYear <- as.numeric(plottingdf$sampleYear)
+range(plottingdf$sampleYear, na.rm=T)
+
+#How can I write a loop based on unique SASAP.Region observations, instead of always subsetting individually? 
+APAL <- subset(esc_goals_results, SASAP.Region == "Alaska Peninsula and Aleutian Islands")
+BB <- subset(esc_goals_results, SASAP.Region == "Bristol Bay")
+CH <- subset(esc_goals_results, SASAP.Region == "Chignik")
+CI <- subset(esc_goals_results, SASAP.Region == "Cook Inlet")
+CR <- subset(esc_goals_results, SASAP.Region == "Copper River")
+KOD <- subset(esc_goals_results, SASAP.Region == "Kodiak")
+KOTZ <- subset(esc_goals_results, SASAP.Region == "Kotzebue")
+KUSK <- subset(esc_goals_results, SASAP.Region == "Kuskokwim")
+NS <- subset(esc_goals_results, SASAP.Region == "Norton Sound")
+PWS <- subset(esc_goals_results, SASAP.Region == "Prince William Sound")
+SE <- subset(esc_goals_results, SASAP.Region == "Southeast")
+YUK <- subset(esc_goals_results, SASAP.Region == "Yukon")
+
+range(APAL$sampleYear)
+range(BB$sampleYear) #includes 2017
+range(CH$sampleYear)
+range(CI$sampleYear)
+range(CR$sampleYear)
+range(KOD$sampleYear)
+range(KOTZ$sampleYear)
+range(KUSK$sampleYear)
+range(NS$sampleYear)
+range(PWS$sampleYear)
+range(SE$sampleYear)
+range(YUK$sampleYear)
+#Bristol Bay is the only region that includes 2017, so let's remove it (causing issues anyways)
+#See: Establishing Proportions of Achievement, for removal of all data sampleYear > 2017 
+```
+
+```{r Establishing Proportions of Achievement, include=FALSE}
 #Need to create a kable of this
 #Do I really want to remove NA values? If they are included in the df, I can show locations of annual counts with no goals
 #that way, esc_goals_results would retains NAs, percents would omit them
-esc_goals_results <- escapement_goals %>%
-    filter(!is.na(MetLower) | !is.na(MetUpper))
+
+esc_goals_results <- bind_rows(escapement_goals, Arctic) %>%
+  arrange(SASAP.Region, LocationID)
+
+esc_goals_results <- esc_goals_results %>%
+    filter(!is.na(MetLower) | !is.na(MetUpper)) %>%
+    arrange(SASAP.Region, LocationID)
+
+esc_goals_results <- esc_goals_results %>%
+  filter(sampleYear < 2017)
 
 sumna <- function(x) {
     sum(x, na.rm = TRUE)
 }
 
+#Selecting a lot of columns here, but may eventually need to make a separate df: one with only a few pertinent columns for "percents", another with more data
 percents <- esc_goals_results %>%
-    select(SASAP.Region, LocationID, Species, sampleYear, MetLower, MetUpper) %>%
-    group_by(sampleYear, SASAP.Region, LocationID, Species) %>%
+    #select(SASAP.Region, LocationID, Species, sampleYear, MetLower, MetUpper) %>%
+    select(SASAP.Region, LocationID, Species, sampleYear, annualCount, types, MetLower, MetUpper) %>%
+    group_by(sampleYear, SASAP.Region, types, LocationID, Species) %>%
     summarise(countMetLower = sumna(MetLower), 
               countMetUpper = sumna(MetUpper), 
               notMetUpper = sumna(!MetUpper), 
@@ -166,12 +219,9 @@ percents <- esc_goals_results %>%
     arrange(SASAP.Region, LocationID)
 
 percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
-```
 
-
-
-```{r Joining original df to Arctic}
-plottingdf <- bind_rows(esc_goals_results, Arctic)
+plottingdf <- bind_rows(percents, Arctic) %>%
+  arrange(SASAP.Region, LocationID)
 ```
 
 Dataframes used throughout plotting 
@@ -182,7 +232,6 @@ Dataframes used throughout plotting
 * percents: goal achievement evaluation 
   - also subsetted into regions (see plots below)
 * plottingdf: percents df with the addition of the Arctic region 
-
 
 ###Introduction
 
@@ -401,7 +450,7 @@ ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..
     theme(legend.text = element_text(size=8), aspect.ratio = 0.5, legend.position = "right") +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
-    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BED", "inRiver", "MT", "OEG", "SEG"))
+    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BED", "inRiver", "MT", "OEG", "SEG")) 
 ```
 
 Since theme_hc() doesn't look great when faceting, maybe I should create my own theme: 
@@ -519,6 +568,15 @@ ggplot(data = BBpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(
     scale_fill_brewer(palette = "Greens")
 
 BB_sockeye <- subset(BBpercents, Species == "sockeye") %>% arrange(sampleYear)
+BB_chum <- subset(BBpercents, Species == "chum") %>% arrange(sampleYear)
+BB_chinook <- subset(BBpercents, Species == "chinook") %>% arrange(sampleYear)
+BB_pink <- subset(BBpercents, Species == "pink") %>% arrange(sampleYear)
+BB_coho <- subset(BBpercents, Species == "coho") %>% arrange(sampleYear)
+
+BB_sock <- subset(esc_goals_results, Species == "sockeye") %>% arrange(sampleYear)
+
+BBsock <- subset(escapement_goals, SASAP.Region == "Bristol Bay" & Species == "sockeye") %>% arrange(desc(sampleYear))
+#I've found the issue!! Within the original df. Need to talk to Jeanette about this! 
 ```
 ```{r QA Chignik}
 ggplot(data = CHIGpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
