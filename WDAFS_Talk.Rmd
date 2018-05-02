@@ -92,6 +92,7 @@ library(tidyr)
 library(ggplot2)
 library(ggthemes)
 library(RColorBrewer)
+library(colorspace)
 library(scales)
 library(viridis)
 ```
@@ -102,6 +103,9 @@ library(viridis)
 #Need to change to KNB url
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
 #escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
+
+escapement_goals
+
 #escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
 
 #escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Peninsula and Aleutians"
@@ -120,13 +124,18 @@ escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = F
 
 ```{r Color Schemes, echo=FALSE, include=FALSE}
 library(scales)
-show_col(hue_pal()(80))
-achievement_colors <- c(Unmet = "#FA7378", Met = "#00B92A", Exceeded ="#00C1AC")
+show_col(hue_pal()(100))
+achievement_colors <- c(Unmet = "#D73027", Met = "#A6D968", Exceeded = "#3288BD")
+show_col(achievement_colors)                     
 #These need to be improved! 
+
+show_col(brewer_pal(type = "div", palette = "RdYlGn")(11))
+show_col(brewer_pal(type = "div", palette = "Spectral")(11))
+show_col(brewer_pal(type = "div", palette = "Paired")(11))
 ```
 
-Show there are no goals in the Arctic by adding a region to the data set: *this will be displayed in the table that shows # goals by region*
-```{r Arctic Region, warning = FALSE}
+Show there are no goals in the Arctic by adding a region to the data set: *this will be displayed in the table that shows goal by region*
+```{r Arctic Region, warning=FALSE}
 Arctic <- data.frame("Arctic")
 colnames(Arctic) <- "SASAP.Region"
 AllRegions <- bind_rows(escapement_goals, Arctic)
@@ -149,7 +158,7 @@ ggplot(BB_sockeye, aes(x=sampleDate, y = DailyCount)) +
 #ave_RunTiming <- BB_sockeye %>%
 ```
 
-```{r QA Data}
+```{r QA Data, eval=FALSE}
 BB_sockeye_Cunningham <- subset(cunningham_data, Species == "sockeye") %>%
   arrange(desc(sampleDate))
 
@@ -199,7 +208,9 @@ esc_goals_results <- esc_goals_results %>%
     arrange(SASAP.Region, LocationID)
 
 esc_goals_results <- esc_goals_results %>%
-  filter(sampleYear < 2017)
+  filter(sampleYear < 2017) #This is done to ignore BB 2017 data, which is incomplete as of 5/2/18, but still included in cumulative escapement data
+
+esc_goals_results$SASAP.Region[which(esc_goals_results$SASAP.Region == "Alaska Peninsula and Aleutian Islands")] <- "AK Pen. and Aleutians"
 
 sumna <- function(x) {
     sum(x, na.rm = TRUE)
@@ -442,15 +453,21 @@ Where are BEGs? Why aren't all goals appearing in this plot? Besides that, the d
 ```{r Goals by Region, fig.align="center"}
 ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
     geom_bar() +
-    labs(x = "Region",
+    labs(x = "",
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
     ggtitle("Escapement Goals by Region") +
     theme_hc() +
-    theme(legend.text = element_text(size=8), aspect.ratio = 0.5, legend.position = "right") +
+    theme(aspect.ratio = 0.5,
+          plot.background = element_rect(fill="gray96"), 
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray96"), 
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.ticks.x = element_line(color = "gray96")) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
-    theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
-    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BED", "inRiver", "MT", "OEG", "SEG")) 
+    theme(axis.text.x = element_text(angle = 50, hjust = 0.85)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BEG", "inRiver", "MT", "OEG", "SEG")) 
 ```
 
 Since theme_hc() doesn't look great when faceting, maybe I should create my own theme: 
@@ -459,19 +476,31 @@ Since theme_hc() doesn't look great when faceting, maybe I should create my own 
 * no background on facet titles 
 * legend.position = "right"
 ```{r Goals Faceted by Region, fig.align="center"}
+formatter <- function(...){
+  function(x) format(round(x, 0), ...)
+  }
+
 ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
     geom_bar(width=1) +
     labs(x = "Year",
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
+    scale_y_continuous(labels = formatter(nsmall = 0)) +
     scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     theme_hc() +
-    theme(legend.text = element_text(size=8), legend.title=element_text(size=10), legend.position = "right") +
+    theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
     guides(fill=guide_legend("Goal Type")) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
     facet_wrap(~SASAP.Region, scales="free_y", ncol = 4)
 #I would like to try this as a geom_area, but I need to figure out the percents df beforehand 
+#WHY IS KOTZEBUE STILL GIVING ME ISSUES?!
 ```
 
 #####Goals by Species
@@ -484,11 +513,19 @@ ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..co
          y = "Number of Goals", 
          title = "Escapement Goals by Species") +
     scale_x_continuous(breaks = pretty_breaks(n = 10)) +
-    theme_minimal() +
-    theme(legend.text = element_text(size=8), axis.text.x = element_text(angle = 50, hjust = 0.95), aspect.ratio = 0.2) +
+    theme_hc() +
+    theme(aspect.ratio = 0.2,
+          plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
     facet_wrap(~Species, scales="free_y", ncol=1)
+
 ```
 
 #####Review of Performance
@@ -499,14 +536,22 @@ ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..co
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs( x = "Year", 
-          y = "Proportion of Years Achieved", 
+          y = "Proportion of Regions", 
           title = "Annual Goal Achievement, Statewide") +
-    scale_y_continuous(labels=scales::percent) + 
+    scale_y_continuous(labels=percent) + 
     scale_x_continuous(breaks = pretty_breaks(n = 5)) +
     guides(fill=guide_legend(title="")) + 
-    theme_minimal() + 
-    scale_fill_brewer(palette = "YlGnBu", direction = -1)
+    theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+   scale_fill_manual(values=achievement_colors)
+  
+  
+  #scale_fill_brewer(palette = "YlGnBu", direction = -1)
 #We're getting there with the colors
+#Might need to change the aspect ratio, make everything a bit more tight/closer together
 ```
 
 *Need to cut off unnecessary years*
@@ -519,13 +564,19 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
-         y = "Percentage Achieved", 
+         y = "Proportio of Years", 
          title = "Annual Goal Achievement") +
-    scale_y_continuous(labels=scales::percent) + 
+    scale_y_continuous(labels=percent) + 
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~SASAP.Region, ncol = 2) + 
-    theme_minimal() +
-    scale_fill_brewer(palette="Greens")
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "bottom", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_manual(values=achievement_colors)
 ```
 ```{r QA Goal Achievement Subsetting, echo = FALSE}
 AKAlpercents <- subset(percents, SASAP.Region == "AK Peninsula and Aleutians")
@@ -711,17 +762,25 @@ ggplot(data = YUKpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=
 
   
 *This plot still needs some work*
+
+Need to explore gaps in chinook, years with 100% same value
 ```{r Goal Achievement by Species, fig.align="center"}
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
          y = "Percentage Achieved", 
-         title = "Annual Goal Achievement by Species") + 
+         title = "Annual Goal Achievement by Species, Statewide") + 
     scale_y_continuous(labels=percent) +
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol=1, scales="free_y") + 
-    theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
 ```
 
 **Check to ensure species plotted are actually those with goals: compare to a table**
