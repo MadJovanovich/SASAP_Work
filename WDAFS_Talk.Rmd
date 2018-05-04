@@ -11,7 +11,7 @@ output:
     theme: paper
     toc: yes
     toc_depth: 6
-    toc_float: no
+    toc_float: yes
 ---
 
 BB QA ISSUE: NEED TO FLAG/ADD NOTE, AND POSSIBLY EXCLUDE 2017 FROM DATA SET 
@@ -99,18 +99,22 @@ library(viridis)
 
 ####Reading in data
 
-```{r Reading data}
-#Need to change to KNB url
+```{r Reading in data}
+#Need to change to KNB url once it is generated
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
-#escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
+```
 
-escapement_goals
+```{r Reading in other occassionally useful data sets, eval=FALSE, include=FALSE}
+escapement_annal <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A2572ff72-bf52-4a25-9872-5f97e2bc9e65")
 
-#escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
+escapement_daily <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Ad8e70975-f7fb-41e8-b372-599f7f725d68")
 
-#escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Peninsula and Aleutians"
+cunningham_data <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A12142948-71d0-48f6-a44b-3fad3802aaec", stringsAsFactors = FALSE)
+```
 
-#cunningham_data <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A12142948-71d0-48f6-a44b-3fad3802aaec", stringsAsFactors = FALSE)
+The name of this region included in the original file was too long to fit into any of the plots, so here it is abbreviated. 
+```{r Changing Region name for simplicity}
+escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Pen. and Aleutians"
 ```
 
 ####Color schemes
@@ -119,105 +123,73 @@ escapement_goals
 
 * Species `scale_color_brewer(palette = "Paired")`
 
-* Exceeded/met/unmet `scale_fill_brewwe(palette = "Greens")` for now, would like to change 
-
+* Exceeded/met/unmet `scale_fill_manual(values = "achievement_colors")` *continual work in progress* 
 
 ```{r Color Schemes, echo=FALSE, include=FALSE}
-library(scales)
 show_col(hue_pal()(100))
-achievement_colors <- c(Unmet = "#D73027", Met = "#A6D968", Exceeded = "#3288BD")
+achievement_colors <- c(Unmet = "#D53E4F", Met = "#A6D968", Exceeded = "#3288BD")
+achievement_colors <- c(Unmet = "#9E0142", Met = "#33A02C", Exceeded = "#FEE08B")
 show_col(achievement_colors)                     
-#These need to be improved! 
+#These need to be improved
 
 show_col(brewer_pal(type = "div", palette = "RdYlGn")(11))
 show_col(brewer_pal(type = "div", palette = "Spectral")(11))
 show_col(brewer_pal(type = "div", palette = "Paired")(11))
+species_color <- c(chinook = "#33A02C", coho = "#A6CEE3", chum = "#1F78B4", sockeye = "#E31A1C", pink = "#FB9A99")
+show_col(species_color)
 ```
 
-Show there are no goals in the Arctic by adding a region to the data set: *this will be displayed in the table that shows goal by region*
+Show there are no goals in the Arctic by adding a region to the data set: *this will be displayed in the table and plot that shows goal by region*
 ```{r Arctic Region, warning=FALSE}
 Arctic <- data.frame("Arctic")
 colnames(Arctic) <- "SASAP.Region"
-AllRegions <- bind_rows(escapement_goals, Arctic)
-
-#Check to make sure thse binded appropriately
-ViewArctic <- AllRegions %>%
-  filter(SASAP.Region == "Arctic")
-#Looks good, so move on to plotting 
 ```
 
-```{r Subsetting for Run Timing, eval=FALSE}
+```{r QA Data - Year Ranges and Complete Data, include=FALSE}
+YearQA <- escapement_goals %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
 
-BB_esc <- subset(escapement_daily, SASAP.Region == "Bristol Bay")
-BB_sockeye <- subset(BB_esc, Species == "sockeye")
-
-ggplot(BB_sockeye, aes(x=sampleDate, y = DailyCount)) +
-  geom_point() + 
-  scale_x_discrete(breaks = pretty_breaks(n = 100))
-
-#ave_RunTiming <- BB_sockeye %>%
-```
-
-```{r QA Data, eval=FALSE}
-BB_sockeye_Cunningham <- subset(cunningham_data, Species == "sockeye") %>%
-  arrange(desc(sampleDate))
-
-plottingdf$sampleYear <- as.numeric(plottingdf$sampleYear)
-range(plottingdf$sampleYear, na.rm=T)
-
-#How can I write a loop based on unique SASAP.Region observations, instead of always subsetting individually? 
-APAL <- subset(esc_goals_results, SASAP.Region == "Alaska Peninsula and Aleutian Islands")
-BB <- subset(esc_goals_results, SASAP.Region == "Bristol Bay")
-CH <- subset(esc_goals_results, SASAP.Region == "Chignik")
-CI <- subset(esc_goals_results, SASAP.Region == "Cook Inlet")
-CR <- subset(esc_goals_results, SASAP.Region == "Copper River")
-KOD <- subset(esc_goals_results, SASAP.Region == "Kodiak")
-KOTZ <- subset(esc_goals_results, SASAP.Region == "Kotzebue")
-KUSK <- subset(esc_goals_results, SASAP.Region == "Kuskokwim")
-NS <- subset(esc_goals_results, SASAP.Region == "Norton Sound")
-PWS <- subset(esc_goals_results, SASAP.Region == "Prince William Sound")
-SE <- subset(esc_goals_results, SASAP.Region == "Southeast")
-YUK <- subset(esc_goals_results, SASAP.Region == "Yukon")
-
-range(APAL$sampleYear)
-range(BB$sampleYear) #includes 2017
-range(CH$sampleYear)
-range(CI$sampleYear)
-range(CR$sampleYear)
-range(KOD$sampleYear)
-range(KOTZ$sampleYear)
-range(KUSK$sampleYear)
-range(NS$sampleYear)
-range(PWS$sampleYear)
-range(SE$sampleYear)
-range(YUK$sampleYear)
 #Bristol Bay is the only region that includes 2017, so let's remove it (causing issues anyways)
-#See: Establishing Proportions of Achievement, for removal of all data sampleYear > 2017 
+
+escapement_goals_QAed <- escapement_goals %>%
+  filter(sampleYear < 2017) #This is done to ignore BB 2017 data, which is incomplete as of 5/2/18, but still included in cumulative escapement data
+
+escapement_goals_QAedkable <- escapement_goals_QAed %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
+#Print a kable to show year ranges, and make note of this exclusion
+```
+
+```{r kable showing Orginial data}
+kable(YearQA, caption = "Ranges of Year in Original Dataset")
+```
+
+Notice that not all regions have the same max year. Should I only evaluate thorough 2014? Seems rather silly given that would exclude all of Bristol Bay's most recent large runs, as well as the past couple Kusko years of slight improvement. 
+
+```{r kable showing Year QA}
+kable(escapement_goals_QAedkable, caption = "Ranges of Years after removing 2017 incomplete data")
 ```
 
 ```{r Establishing Proportions of Achievement, include=FALSE}
 #Need to create a kable of this
 #Do I really want to remove NA values? If they are included in the df, I can show locations of annual counts with no goals
-#that way, esc_goals_results would retains NAs, percents would omit them
+#that way, EG_results would retains NAs, percents would omit them
 
-esc_goals_results <- bind_rows(escapement_goals, Arctic) %>%
+EG_results <- escapement_goals_QAed %>%
+  filter(!is.na(MetLower) | !is.na(MetUpper)) %>%
   arrange(SASAP.Region, LocationID)
-
-esc_goals_results <- esc_goals_results %>%
-    filter(!is.na(MetLower) | !is.na(MetUpper)) %>%
-    arrange(SASAP.Region, LocationID)
-
-esc_goals_results <- esc_goals_results %>%
-  filter(sampleYear < 2017) #This is done to ignore BB 2017 data, which is incomplete as of 5/2/18, but still included in cumulative escapement data
-
-esc_goals_results$SASAP.Region[which(esc_goals_results$SASAP.Region == "Alaska Peninsula and Aleutian Islands")] <- "AK Pen. and Aleutians"
 
 sumna <- function(x) {
     sum(x, na.rm = TRUE)
 }
 
 #Selecting a lot of columns here, but may eventually need to make a separate df: one with only a few pertinent columns for "percents", another with more data
-percents <- esc_goals_results %>%
+percents <- EG_results %>%
     #select(SASAP.Region, LocationID, Species, sampleYear, MetLower, MetUpper) %>%
     select(SASAP.Region, LocationID, Species, sampleYear, annualCount, types, MetLower, MetUpper) %>%
     group_by(sampleYear, SASAP.Region, types, LocationID, Species) %>%
@@ -238,10 +210,13 @@ plottingdf <- bind_rows(percents, Arctic) %>%
 Dataframes used throughout plotting 
 
 * escapement_goals: original data frame, created from joining cumulative escapement with escapement goals 
+
 * AllRegions: escapement_goals with the addition of one line to include the Arctic (to show lack of goals)
-* esc_goals_results: escapement_goals df with NA observations removed
+
+* EG_results: escapement_goals df with NA observations removed 
+
 * percents: goal achievement evaluation 
-  - also subsetted into regions (see plots below)
+  
 * plottingdf: percents df with the addition of the Arctic region 
 
 ###Introduction
@@ -356,11 +331,11 @@ Terminology is outlined (only some terms selected here):
 
 ######MSY, maximum sustained yield
 
-  the greatest average annual yield from a salmon stock; in practice, MSY is achieved when a level of escapement is maintained within a specific range on an annual basis, regardless of annual run strength; the achievement of MSY requires a high degree of management precision and scientific information regarding the relationship between salmon escapement and subsequent return; the concept of MSY should be interpreted in a broad ecosystem context to take into account species interactions, environmental changes, an array of ecosystem goods and services, and scientific uncertainty**
+the greatest average annual yield from a salmon stock; in practice, MSY is achieved when a level of escapement is maintained within a specific range on an annual basis, regardless of annual run strength; the achievement of MSY requires a high degree of management precision and scientific information regarding the relationship between salmon escapement and subsequent return; the concept of MSY should be interpreted in a broad ecosystem context to take into account species interactions, environmental changes, an array of ecosystem goods and services, and scientific uncertainty**
 
-######OEG, optimanl escapement goal
+######OEG, optimal escapement goal
 
-  a specific management objective for salmon escapement that considers biological and allocative factors and may differ from the SEG or BEG; an OEG will be sustainable and may be expressed as a range with the lower bound above the level of SET, and will be adopted as a regulation by the board; the department will seek to maintain evenly distributed escapements within the bounds of the OEG
+a specific management objective for salmon escapement that considers biological and allocative factors and may differ from the SEG or BEG; an OEG will be sustainable and may be expressed as a range with the lower bound above the level of SET, and will be adopted as a regulation by the board; the department will seek to maintain evenly distributed escapements within the bounds of the OEG
 
 - OSY, optimum sustained yield: an average annual yield from a salmon stock considered to be optimal in achieving a specific management objective other than maximum yield, such as achievement of a consistent level of sustained yield, protection of a less abundant or less productive salmon stock or species, enhancement of catch per unit effort in sport fishery, facilitation of a nonconsumptive use, facilitation of a subsistence use, or achievement of a specific allocation
 
@@ -441,7 +416,7 @@ Terminology is outlined (only some terms selected here):
 The AAC also dictates fishing gear specifications and operations, district boundaries; and in the past has addressed specialized management plans in the past, such as the AYK Region Chum Salmon Rebuilding Management Plan. 
 
 
-####Exploring Escapement Goals: summary visualizations
+###Exploring Escapement Goals: summary visualizations
 
 Goal Types
 
@@ -449,7 +424,6 @@ Goal Types
 
 #####Goals by Region
 
-Where are BEGs? Why aren't all goals appearing in this plot? Besides that, the design of this plot looks good. 
 ```{r Goals by Region, fig.align="center"}
 ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
     geom_bar() +
@@ -470,14 +444,9 @@ ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..
     scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BEG", "inRiver", "MT", "OEG", "SEG")) 
 ```
 
-Since theme_hc() doesn't look great when faceting, maybe I should create my own theme: 
-
-* remove vertical lines, retain horizontal
-* no background on facet titles 
-* legend.position = "right"
 ```{r Goals Faceted by Region, fig.align="center"}
-formatter <- function(...){
-  function(x) format(round(x, 0), ...)
+f <- function(x){
+  format(round(x, 0), nsmall=0, scientific=FALSE)
   }
 
 ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
@@ -485,7 +454,7 @@ ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))
     labs(x = "Year",
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
-    scale_y_continuous(labels = formatter(nsmall = 0)) +
+    scale_y_continuous(labels = f) +
     scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     theme_hc() +
     theme(plot.background = element_rect(fill="gray98"),
@@ -496,7 +465,6 @@ ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))
           strip.background = element_rect(fill = "gray98"),
           panel.grid.major.y = element_line(color="gray93")) +
     guides(fill=guide_legend("Goal Type")) +
-    theme(axis.text.x = element_text(angle = 50, hjust = 0.95)) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
     facet_wrap(~SASAP.Region, scales="free_y", ncol = 4)
 #I would like to try this as a geom_area, but I need to figure out the percents df beforehand 
@@ -505,9 +473,8 @@ ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))
 
 #####Goals by Species
 
-How can I create my theme? 
 ```{r Goals by Species, fig.align="center", fig.width=6.5}
-ggplot(data = esc_goals_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+ggplot(data = EG_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
     geom_bar() +
     labs(x = "Year",
          y = "Number of Goals", 
@@ -554,11 +521,6 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
 #Might need to change the aspect ratio, make everything a bit more tight/closer together
 ```
 
-*Need to cut off unnecessary years*
-
-*Bristol Bay unmet in recent years? Need to QA the data: plot by region, facet by species*
-
-
 ```{r Goal Achievement by Region, fig.align="center"}
 #It's easier to compare by region and year with less columns, but we still need to stretch out the y axis
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
@@ -579,7 +541,7 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
     scale_fill_manual(values=achievement_colors)
 ```
 ```{r QA Goal Achievement Subsetting, echo = FALSE}
-AKAlpercents <- subset(percents, SASAP.Region == "AK Peninsula and Aleutians")
+AKAlpercents <- subset(plottingdf, SASAP.Region == "AK Pen. and Aleutians")
 BBpercents <- subset(percents, SASAP.Region == "Bristol Bay") %>%
   arrange(Species, sampleYear, LocationID)
 CHIGpercents <- subset(percents, SASAP.Region == "Chignik")
@@ -593,19 +555,22 @@ PWSpercents <- subset(percents, SASAP.Region == "Prince William Sound")
 SEpercents <- subset(percents, SASAP.Region == "Southeast")
 YUKpercents <- subset(percents, SASAP.Region == "Yukon")
 ```
-```{r QA AK Pen and Aleutians, eval=FALSE}
+```{r QA AK Pen and Aleutians}
 ggplot(data = AKAlpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
          y = "Percentage Achieved", 
          title = "Annual Goal Achievement: Peninsula and Aleutians") + 
     scale_y_continuous(labels=percent) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol=1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "Reds")
+    scale_fill_manual(values = achievement_colors)
+
 ```
-```{r QA Bristol Bay}
+
+```{r QA Bristol Bay - goal achievement}
 ggplot(data = BBpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
@@ -616,18 +581,60 @@ ggplot(data = BBpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol=1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "Greens")
-
-BB_sockeye <- subset(BBpercents, Species == "sockeye") %>% arrange(sampleYear)
-BB_chum <- subset(BBpercents, Species == "chum") %>% arrange(sampleYear)
-BB_chinook <- subset(BBpercents, Species == "chinook") %>% arrange(sampleYear)
-BB_pink <- subset(BBpercents, Species == "pink") %>% arrange(sampleYear)
-BB_coho <- subset(BBpercents, Species == "coho") %>% arrange(sampleYear)
-
-BB_sock <- subset(esc_goals_results, Species == "sockeye") %>% arrange(sampleYear)
-
-BBsock <- subset(escapement_goals, SASAP.Region == "Bristol Bay" & Species == "sockeye") %>% arrange(desc(sampleYear))
-#I've found the issue!! Within the original df. Need to talk to Jeanette about this! 
+    scale_fill_manual(values = achievement_colors)
+```
+```{r Bristol Bay escapement over time by species}
+BB_esc <- EG_results %>%
+  filter(SASAP.Region == "Bristol Bay") %>%
+  group_by(sampleYear, Species) %>%
+  summarize(sum(annualCount))
+colnames(BB_esc) <- c("Year", "Species", "SumAnnualCount")
+```
+```{r Revisiting original escapement plotting ideas - Bristol Bay}
+#Too add in a line of the goals, we would need to visualize by LocationID, not by entire region
+ggplot(data = BB_esc, aes(x = Year, y = SumAnnualCount, color = Species)) + 
+    geom_line(size = 1) +
+      expand_limits(y=c(0,1000000)) +
+      scale_y_continuous(labels=comma) +
+      labs(x = "Year", 
+           y = "Annual Count", 
+           title = "Bristol Bay Escapement", 
+           subtitle = "all systems within the region") + 
+      guides(fill=guide_legend(title="Species")) + 
+      theme_hc() +
+      theme(plot.background = element_rect(fill="gray98"), 
+            legend.position = "right", 
+            legend.background = element_rect(fill="gray98"),
+            panel.grid.major.y = element_line(color="gray93"),
+            panel.grid.major.x = element_line(color="gray93"),
+            axis.line = element_line(color="gray80")) +
+      scale_color_manual(values = species_color)
+```
+```{r Bristol Bay kable of data coverage}
+BBesc_summary1 <- BB_esc %>%
+  group_by(Species) %>%
+  summarize(min(Year), max(Year))
+kable(BBesc_summary1, caption = "Bristol Bay Data Coverage")
+```
+```{r kable BBesc_summary2}
+BBesc_summary2 <- BBpercents %>%
+  group_by(Species) %>%
+  summarize(min(sampleYear), max(sampleYear))
+kable(BBesc_summary2, caption = "Bristol Bay Data Coverage")
+```
+```{r kable BBesc_summary3}
+BBesc_summary3 <- escapement_goals %>%
+  filter(SASAP.Region == "Bristol Bay") %>%
+  group_by(Species) %>%
+  summarize(min(sampleYear), max(sampleYear))
+kable(BBesc_summary3, caption = "Bristol Bay Data Coverage")
+```
+```{r kable BBesc_summary4}
+BBesc_summary4 <- escapement_goals_QAed %>%
+  filter(SASAP.Region == "Bristol Bay") %>%
+  group_by(Species) %>%
+  summarize(min(sampleYear), max(sampleYear))
+kable(BBesc_summary4, caption = "Bristol Bay Data Coverage")
 ```
 ```{r QA Chignik}
 ggplot(data = CHIGpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
@@ -640,7 +647,7 @@ ggplot(data = CHIGpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol=1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "Greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 ```{r QA Cook Inlet}
 ggplot(data = CIpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
@@ -652,7 +659,7 @@ ggplot(data = CIpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
 ```{r QA Copper River}
@@ -665,7 +672,7 @@ ggplot(data = CRpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
 ```{r QA Kodiak}
@@ -678,7 +685,7 @@ ggplot(data = KODpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
 ```{r QA Kotzebue}
@@ -691,7 +698,7 @@ ggplot(data = KOTZpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
 ```{r QA Kuskokwim}
@@ -704,7 +711,42 @@ ggplot(data = KUSKOpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), 
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
+```
+```{r Kuskokwim escapment over time by species}
+#Here I need to look at at different df to get the above desired output. 
+Kusko_esc <- EG_results %>%
+  filter(SASAP.Region == "Kuskokwim") %>%
+  group_by(sampleYear, Species) %>%
+  summarize(sum(annualCount))
+colnames(Kusko_esc) <- c("Year", "Species", "SumAnnualCount")
+```
+```{r Revisiting original escapement plotting ideas - Kuskokwim}
+#Too add in a line of the goals, we would need to visualize by LocationID, not by entire region
+ggplot(data = Kusko_esc, aes(x = Year, y = SumAnnualCount, color = Species)) + 
+    geom_line(size = 1) +
+      expand_limits(y=c(0,1000000)) +
+      scale_y_continuous(labels=comma) +
+      labs(x = "Year", 
+           y = "Annual Count", 
+           title = "Kuskokwim Escapement", 
+           subtitle = "all systems within the region") + 
+      guides(fill=guide_legend(title="Species")) + 
+      theme_hc() +
+      theme(plot.background = element_rect(fill="gray98"), 
+            legend.position = "right", 
+            legend.background = element_rect(fill="gray98"),
+            panel.grid.major.y = element_line(color="gray93"),
+            panel.grid.major.x = element_line(color="gray93"),
+            axis.line = element_line(color="gray80")) +
+      scale_color_manual(values = species_color) 
+
+#geom_line(data = EG_results, aes(x = sampleYear, y = upper_goal, group = year_implemented, color = factor(goal_type)), linetype = "dashed") +
+#geom_line(aes(x = Year, y = lower_goal, group = year_implemented, color = factor(goal_type)), linetype = "dashed")
+
+
+
+#show_col(species_color)
 ```
 
 ```{r QA Norton Sound}
@@ -717,7 +759,7 @@ ggplot(data = NSpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
 ```{r QA Prince William Sound}
@@ -731,7 +773,7 @@ ggplot(data = PWSpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
 ```{r QA Southeast}
@@ -744,7 +786,7 @@ ggplot(data = SEpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
 ```{r QA Yukon}
@@ -757,7 +799,7 @@ ggplot(data = YUKpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol = 1, scales="free_y") + 
     theme_minimal() +
-    scale_fill_brewer(palette = "greens")
+    scale_fill_manual(values = achievement_colors)
 ```
 
   
@@ -780,14 +822,15 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
           legend.background = element_rect(fill="gray98"),
           strip.background = element_rect(fill = "gray98"),
           panel.grid.major.y = element_line(color="gray93")) +
-    scale_fill_brewer(palette = "YlGnBu", direction = -1)
+    scale_fill_manual(values = achievement_colors)
 ```
 
-**Check to ensure species plotted are actually those with goals: compare to a table**
-
-**Investigate 0 values: ex. Bristol Bay chum and pink**
 
 ```{r Lower Goal Achievement Faceted by Region, fig.align="center"}
+#species_percents <- percents %>%
+#  group_by(SASAP.Region, Species, sampleYear) %>%
+#  summarize(sum(metUnmetExceeded))
+  
 ggplot(data = percents, aes(x = sampleYear, y = percentMetLower, color=Species)) + 
     geom_line() + 
     labs(title = "Annual Lower Goal Achievement",
