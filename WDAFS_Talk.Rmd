@@ -14,6 +14,34 @@ output:
     toc_float: yes
 ---
 
+Step away and figure out my story: fine to talk about the challenges 
+
+Statewide escapement, species by region (what are the trends in species? going up or down? Are goals being met?) 
+Yukon location may work 
+
+Table of what we have in May 2018 
+
+[Kuskokwim] highlight when goals were initiated.... look at catch data
+
+History of importance of esc
+Challenge: problem statment = importance of esc, but disparate data (collected by different groups, archived in different places)
+What's the solution to it: collect, clean - talk about the process
+
+Bringing data together has helped solidfy story of data abundance in certain regions 
+Ongoing effort, biggest ongoing effort to do this 
+
+Throughout this process: do I have a story to tell. Don't tell a counterproductive story. 
+
+Catch and escapement in the Kuskokwim 
+
+Show stuff of this is where we are at, what we have
+
+Importance of esc and historical context
+Issues of getting escapement data (different sites)
+What's the ultimate outcome 
+
+Compare to M&V figures 
+
 ###Notes 
 
 Year QA Issue:
@@ -78,7 +106,7 @@ Story board out the talk: what do I want the take home message to be?
     i)  number goals by specie, type
 2.  Proportion of 49 goals by species in SE region
 3.  Proportion of 120 goals by species in Central region
-4.  Proportion of 72 goals by species in AYK reguib
+4.  Proportion of 72 goals by species in AYK region
 5.  Proportion of 59 goals by species in Westward
 6.  SE escapement compared to goals: 2004-2012
 7.  Central escapement compared to goals: 2004-2012
@@ -108,6 +136,7 @@ library(viridis)
 ```{r Reading in data}
 #Need to change to KNB url once it is generated
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
+
 ```
 
 ```{r Reading in other occassionally useful data sets, eval=FALSE, include=FALSE}
@@ -124,7 +153,7 @@ Changing some names:
   * Change "inRiver" to In-River
   * Capitalize "agreement"
 
-```{r Changing Region name for simplicity}
+```{r Changing_Region_name_for_simplicity}
 escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Pen. and Aleutians"
 
 escapement_goals$types[escapement_goals$types == "inRiver"] <- "In-River"
@@ -431,40 +460,42 @@ ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..
     theme(aspect.ratio = 0.5,
           plot.background = element_rect(fill="gray96"), 
           legend.text = element_text(size=8), 
-          legend.position = "right", 
+          legend.position = "bottom", 
           legend.background = element_rect(fill="gray96"), 
           panel.grid.major.y = element_line(color="gray93"),
           axis.ticks.x = element_line(color = "gray96")) +
     guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
     theme(axis.text.x = element_text(angle = 50, hjust = 0.85)) +
-    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("agreement", "BEG", "inRiver", "MT", "OEG", "SEG")) 
+    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("Agreement", "BEG", "In-River", "MT", "OEG", "SEG")) 
 ```
 
 ```{r Goals Faceted by Region, fig.align="center"}
-f <- function(x){
-  format(round(x, 0), nsmall=0, scientific=FALSE)
-  }
+#Since Copper River and Kotzebue have one goal type throughout, let's remove them before creating this next plot
 
-ggplot(data = plottingdf, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+multiple_types <- subset(percents, SASAP.Region != "Copper River")
+multiple_types <- subset(multiple_types, SASAP.Region != "Kotzebue")
+    
+    ggplot(data = multiple_types, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
     geom_bar(width=1) +
     labs(x = "Year",
          y = "Number of Goals", 
          title = "Escapement Goals by Region") +
-    scale_y_continuous(labels = f) +
+    #scale_y_continuous(labels = f) +
     scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     theme_hc() +
     theme(plot.background = element_rect(fill="gray98"),
           legend.text = element_text(size=8), 
-          legend.position = "right", 
+          legend.position = "none", 
           legend.background = element_rect(fill="gray98"),
           axis.text.x = element_text(angle = 50, hjust = 0.95),
           strip.background = element_rect(fill = "gray98"),
           panel.grid.major.y = element_line(color="gray93")) +
     guides(fill=guide_legend("Goal Type")) +
     scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
-    facet_wrap(~SASAP.Region, scales="free_y", ncol = 4)
-#I would like to try this as a geom_area, but I need to figure out the percents df beforehand 
-#WHY IS KOTZEBUE STILL GIVING ME ISSUES?!
+    facet_wrap(~SASAP.Region, scales="free_y", ncol = 2)
+#I would like to try this as a geom_area
+
+
 ```
 
 ```{r Exploring Goal Types}
@@ -523,17 +554,15 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
           y = "Proportion of Regions", 
           title = "Annual Goal Achievement, Statewide") +
     scale_y_continuous(labels=percent) + 
-    scale_x_continuous(breaks = pretty_breaks(n = 5)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     guides(fill=guide_legend(title="")) + 
     theme_hc() +
     theme(plot.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95), 
           legend.position = "right", 
           legend.background = element_rect(fill="gray98"),
           panel.grid.major.y = element_line(color="gray93")) +
-   scale_fill_manual(values=achievement_colors)
-  
-  
-  #scale_fill_brewer(palette = "YlGnBu", direction = -1)
+  scale_fill_brewer(palette = "YlGnBu", direction = -1)
 #We're getting there with the colors
 #Might need to change the aspect ratio, make everything a bit more tight/closer together
 ```
@@ -546,16 +575,18 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
          y = "Proportio of Years", 
          title = "Annual Goal Achievement") +
     scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~SASAP.Region, ncol = 2) + 
     theme_hc() +
         theme(plot.background = element_rect(fill="gray98"),
-          legend.text = element_text(size=8), 
-          legend.position = "bottom", 
-          legend.background = element_rect(fill="gray98"),
-          strip.background = element_rect(fill = "gray98"),
-          panel.grid.major.y = element_line(color="gray93")) +
-    scale_fill_manual(values=achievement_colors)
+              #axis.text.x = element_text(angle = 50, hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "none", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
 ```
 ```{r QA Goal Achievement Subsetting, echo = FALSE}
 AKAlpercents <- subset(plottingdf, SASAP.Region == "AK Pen. and Aleutians")
@@ -587,18 +618,34 @@ ggplot(data = AKAlpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y
 
 ```
 
-```{r QA Bristol Bay - goal achievement}
-ggplot(data = BBpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
-    geom_bar(position='fill', width = 1) +
-    labs(x = "Year", 
-         y = "Percentage Achieved", 
-         title = "Annual Goal Achievement: Bristol Bay") + 
-    scale_y_continuous(labels=percent) +
-    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
-    guides(fill=guide_legend(title="")) + 
-    facet_wrap(~Species, ncol=1, scales="free_y") + 
-    theme_minimal() +
-    scale_fill_manual(values = achievement_colors)
+```{r QA Bristol Bay - goal achievement, eval=FALSE}
+
+
+
+
+BBsockeye <- BBpercents %>%
+  filter(Species == "sockeye")
+#Can't get this to work
+ggplot() +
+    geom_bar(data = BBsockeye, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..)), position='fill', width = 1) +
+      labs(x = "Year", 
+         y = "Proportio of Years", 
+         title = "Annual Goal Achievement") +
+      #scale_y_continuous(labels=percent) + 
+      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+      guides(fill=guide_legend(title="")) + 
+      facet_wrap(~Species, ncol = 1, scales="free_y") +
+      theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+              #axis.text.x = element_text(angle = 50, hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "none", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93")) +
+      scale_fill_brewer(palette = "YlGnBu", direction = -1) +
+    geom_line(data = BBsockeye_catch, aes(x = Year, y = NumFish_SumbyGear, color = "Bu")) +
+        scale_y_continuous(sec.axis = sec_axis(~.,name = "Catch"), labels = comma)
 ```
 ```{r Bristol Bay escapement over time by species}
 BB_esc <- EG_results %>%
@@ -609,6 +656,10 @@ colnames(BB_esc) <- c("Year", "Species", "SumAnnualCount")
 ```
 ```{r Revisiting original escapement plotting ideas - Bristol Bay}
 #Too add in a line of the goals, we would need to visualize by LocationID, not by entire region
+
+#Take away other species 
+#Escapement is going up, contrast to Kusko or Yukon
+
 ggplot(data = BB_esc, aes(x = Year, y = SumAnnualCount, color = Species)) + 
     geom_line(size = 1) +
       expand_limits(y=c(0,1000000)) +
@@ -757,6 +808,7 @@ ggplot(data = Kusko_esc, aes(x = Year, y = SumAnnualCount, color = Species)) +
             panel.grid.major.x = element_line(color="gray93"),
             axis.line = element_line(color="gray80")) +
       scale_color_manual(values = species_color) 
+#Look at just Chinook in the Kusko, put in its own graph 
 
 #geom_line(data = EG_results, aes(x = sampleYear, y = upper_goal, group = year_implemented, color = factor(goal_type)), linetype = "dashed") +
 #geom_line(aes(x = Year, y = lower_goal, group = year_implemented, color = factor(goal_type)), linetype = "dashed")
@@ -797,14 +849,49 @@ ggplot(data = PWSpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=
 ggplot(data = SEpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
-         y = "Percentage Achieved", 
-         title = "Annual Goal Achievement: Southeast") + 
-    scale_y_continuous(labels=percent) +
+         y = "Proportio of Years", 
+         title = "Annual Goal Achievement") +
+    scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     guides(fill=guide_legend(title="")) + 
-    facet_wrap(~Species, ncol = 1, scales="free_y") + 
-    theme_minimal() +
-    scale_fill_manual(values = achievement_colors)
-```
+    facet_wrap(~Species, ncol = 1, scales="free_y") +
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+              #axis.text.x = element_text(angle = 50, hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "none", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
+
+Taku <- SEpercents %>%
+  filter(LocationID == "Taku River", Species == "chinook")
+
+Stikine <- SEpercents %>%
+  filter(LocationID == "Stikine River", Species == "chinook")
+
+Taku_Stikine <- bind_rows(Taku, Stikine)
+
+ggplot(data = Taku_Stikine, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Proportion of Years", 
+         title = "Annual Goal Achievement: Chinook") +
+    scale_y_continuous(labels=percent) + 
+    #scale_x_continuous(breaks = pretty_breaks(n = 9)) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~LocationID, ncol = 1) +
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+              #axis.text.x = element_text(angle = 50, hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "right", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
+```                      
 
 ```{r QA Yukon}
 ggplot(data = YUKpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
@@ -827,19 +914,21 @@ Need to explore gaps in chinook, years with 100% same value
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
-         y = "Percentage Achieved", 
-         title = "Annual Goal Achievement by Species, Statewide") + 
+         y = "Proportion Achieved", 
+         title = "Statewide Goal Achievement by Species") + 
     scale_y_continuous(labels=percent) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
     guides(fill=guide_legend(title="")) + 
     facet_wrap(~Species, ncol=1, scales="free_y") + 
     theme_hc() +
         theme(plot.background = element_rect(fill="gray98"),
-          legend.text = element_text(size=8), 
-          legend.position = "right", 
-          legend.background = element_rect(fill="gray98"),
-          strip.background = element_rect(fill = "gray98"),
-          panel.grid.major.y = element_line(color="gray93")) +
-    scale_fill_manual(values = achievement_colors)
+              #axis.text.x = element_text(hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
 ```
 
 This doesn't really make sense, because it is by region and not locationID: meaningless because goals are established and evaluated by location, so maybe this should be done by a few select (case studies) locations
@@ -950,7 +1039,7 @@ Focus on Chinook: conservation case studies, comparison among regions
 
 > "As part of an every-three-year review process using the latest stock-recruit data, Fair et al. (2012) **suggested that raising the escapement goals—considerably for Egegik and Ugashik—to the Biological Escapement Goals (BEGs) in Table 2, would increase yield from the fishery. Harvest achieved by targeting these BEGs was expected to more closely reflect maximum sustainable yield (MSY).** Alaska’s Policy for the Management of Sustainable Salmon Fisheries specifies that, to the extent possible, salmon fisheries are to be managed for MSY, which depends on sufficient historical stock-recruit data to define MSY escapement. (5 AAC 39.222)." 
 
-![Table 2](/Users/MadiMac/SASAP Work/'Mo fish 'mo money plots/Table 2.png)
+![Table 2](SASAP Work/'Mo fish 'mo money plots/Table 2.png)
 
 MSY: greater fish availability = more fish to sell -> more fishing income and jobs 
 

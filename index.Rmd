@@ -1,0 +1,18 @@
+---
+title: "Pages Content"
+author: "Madeline Jovanovich"
+date: "5/18/2018"
+output: html_document
+---
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(leaflet)
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(DT)
+})
+```
+

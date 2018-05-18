@@ -1,0 +1,85 @@
+---
+title: "Harvest Data Reformatting"
+author: "Madeline Jovanovich"
+date: "May 8, 2018"
+output:
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+This script cleans up column names and manually assigns SASAP Regions to ADF&G Areas. See note on other SASAP Regions included here.
+
+```{r Load Libraries, message=FALSE}
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+```{r Read in data}
+harvest <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A49a6d2fa-d47a-482c-8a28-d8a9623dc16e", stringsAsFactors = FALSE, na.strings = c("", "NA"))
+```
+```{r View original data}
+harvest_preview <- harvest[c(1,2,20,21,100,101,200,201,900,901),]
+kable(harvest_preview, caption = "Snapshot of original data set")
+```
+```{r}
+str(harvest)
+unique(harvest$AREA)
+harvest <- harvest %>%
+    select(c(1,2,5,6,7,8,9,10,11,12,13,14,15))
+
+colnames(harvest) <- c("Year", "Area", "Num_Fish", "Value", "Net_Pounds", "Whole_Pounds", "People_Count", "Permit_Count", "Processor_Count", "Vessel_Count", "Confidential", "Gear", "Species")
+colnames(harvest)
+harvest <- harvest[,c(1, 2, 12, 13, 3, 4, 5, 6, 7, 8, 9, 10, 11)]
+harvest <- harvest %>% arrange(Area, Year, Gear, Species)
+```
+
+Notice here there is manual assignment of SASAP Regions to Areas, but not all Areas fit will into a SASAP Region, so some included here may not be congruent with official list of Regions. Also note that some places (for example, Southeast) are aggregated to a possibly useless level for some applications. 
+```{r}
+harvest[,"SASAP.Region"] <- NA
+harvest$SASAP.Region[which(harvest$Area == "Adak Western Aleutians")] <- "Alaska Peninsula and Aleutian Islands"
+harvest$SASAP.Region[which(harvest$Area == "Bristol Bay")] <- "Bristol Bay"
+harvest$SASAP.Region[which(harvest$Area == "Chignik")] <- "Chignik"
+harvest$SASAP.Region[which(harvest$Area == "Cook Inlet Lower")] <- "Cook Inlet"
+harvest$SASAP.Region[which(harvest$Area == "Cook Inlet Upper")] <- "Cook Inlet"
+harvest$SASAP.Region[which(harvest$Area == "Dutch Harbor")] <- "Alaska Peninsula and Aleutian Islands"
+harvest$SASAP.Region[which(harvest$Area == "EEZ Bering Sea")] <- "Bering Sea"
+harvest$SASAP.Region[which(harvest$Area == "EEZ Gulf of Alaska")] <- "Gulf of Alaska"
+harvest$SASAP.Region[which(harvest$Area == "Juneau Hanies")] <- "Southeast"
+harvest$SASAP.Region[which(harvest$Area == "Ketchikan Craig")] <- "Southeast"
+harvest$SASAP.Region[which(harvest$Area == "Kodiak")] <- "Kodiak"
+harvest$SASAP.Region[which(harvest$Area == "Kotzebue Norton Sound")] <- "Kotzebue and Norton Sound"
+harvest$SASAP.Region[which(harvest$Area == "Kuskokwim")] <- "Kuskokwim"
+harvest$SASAP.Region[which(harvest$Area == "North Peninsula")] <- "Alaska Peninsula and Aleutian Islands"
+harvest$SASAP.Region[which(harvest$Area == "Petersburg Wrangell")] <- "Southeast"
+harvest$SASAP.Region[which(harvest$Area == "PWS Copper Bering Rivers")] <- "Copper River"
+harvest$SASAP.Region[which(harvest$Area == "PWS Eastern District")] <- "Prince William Sound"
+harvest$SASAP.Region[which(harvest$Area == "PWS excluding CRBRED")] <- "Prince William Sound"
+harvest$SASAP.Region[which(harvest$Area == "Sitka Pelican")] <- "Southeast"
+harvest$SASAP.Region[which(harvest$Area == "South Peninsula")] <- "Alaska Peninsula and Aleutian Islands"
+harvest$SASAP.Region[which(harvest$Area == "Yakutat")] <- "Southeast"
+harvest$SASAP.Region[which(harvest$Area == "Yukon")] <- "Yukon"
+
+harvest <- harvest[,c(1,14,2,3,4,5,6,7,8,9,10,11,12,13)]
+
+unique(harvest$SASAP.Region)
+```
+
+```{r, eval=FALSE}
+write.csv(harvest, "~/R/Harvest.csv", row.names = FALSE)
+```
+```{r Terrible QA plots but this all needs some work}
+ggplot(harvest, aes(x = Year, y = Num_Fish, color = Species)) + 
+    geom_point() + 
+    facet_wrap(~SASAP.Region, scales = "free")
+
+ggplot(harvest, aes(x = Year, fill = Species)) + 
+    geom_bar() + 
+    facet_wrap(~SASAP.Region, scales = "free")
+
+ggplot(harvest, aes(x = Year, fill = Species)) + 
+    geom_histogram() + 
+    facet_wrap(~SASAP.Region, scales = "free")
+```

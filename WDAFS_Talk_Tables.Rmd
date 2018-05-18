@@ -1,0 +1,162 @@
+---
+title: "WDAFS_Talk_Plots"
+author: "Madeline Jovanovich"
+date: "5/7/2018"
+output: html_document
+---
+
+This document is dependent on WDAFS_Talk.Rmd
+
+```{r}
+harvest <- read.csv(file = "~/R/Harvest.csv")
+
+#NOTICE THIS IS A BETTER FILE
+h <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A6619074a-3037-41a6-8dbf-9bf2988cabec", stringsAsFactors = FALSE)
+
+h <- h %>%
+  filter(CONFIDENTIAL != "CONFIDENTIAL")
+```
+
+```{r}
+colnames(EG_results)
+
+summary <- EG_results %>%
+  select(c(1,2,3,5,6,7,8,9,10,16,17))
+
+colnames(summary)
+
+table1 <- summary %>%
+  group_by(SASAP.Region, Species) %>%
+  count(types) 
+
+table2 <- summary %>%
+  group_by(SASAP.Region) %>%
+  select(sampleYear) %>%
+  summarise_all(funs(min = min, 
+                     max = max))
+table3 <- summary %>%
+  group_by(SASAP.Region) %>%
+  select(types) %>%
+  summarize_all(names(summary$types))
+
+str(summary)
+ls(summary$types)
+
+# %>% summarize(min(sampleYear))
+
+```
+
+```{r Bristol Bay acheievement over time + catch}
+ggplot(data = BBpercents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+      labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Bristol Bay") + 
+      scale_y_continuous(labels=percent) +
+      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+      guides(fill=guide_legend(title="")) + 
+      facet_wrap(~Species, ncol=1, scales="free_y") + 
+      theme_minimal() +
+      scale_fill_brewer(palette = "YlGnBu", direction = -1) 
+  
+
+BB_harvest <- harvest %>%
+  filter(SASAP.Region == "Bristol Bay") %>%
+  select(Year, SASAP.Region, Gear, Species, Num_Fish, Value, Net_Pounds)
+
+names(BBpercents)[names(BBpercents) == 'sampleYear'] <- 'Year'
+colnames(BBpercents)
+
+BBcase_study <- left_join(BB_harvest, BBpercents, by = c("Year", "Species"))
+
+colnames(BBcase_study)
+
+BBcase_study <- BBcase_study %>%
+  select(Year, SASAP.Region.x, Gear, Species, Num_Fish, types, metUnmetExceeded)
+
+BBcase <- BBcase_study %>%
+  group_by(Species, Year) %>%
+  summarize(sum(Num_Fish))
+colnames(BBcase)
+
+BBsockeye_catch <- BBcase %>%
+  filter(Species == "sockeye")
+colnames(BBsockeye_catch) <- c("Species", "Year", "NumFish_SumbyGear")
+
+BB_plot <- left_join(BBcase_study, BBcase, by = c("Year", "Species"))
+colnames(BB_plot)
+
+BB_plot <- BB_plot %>%
+  select(Year, SASAP.Region.x, Species, metUnmetExceeded, "sum(Num_Fish)")
+colnames(BB_plot) <- c("Year", "SASAP.Region", "Species", "metUnmetExceeded", "NumFish_SumbyGear")
+
+ggplot(BB_plot) + 
+    geom_bar(aes(x = Year, fill=factor(metUnmetExceeded), y=(..count..)), position='fill', width = 1) +
+      labs(x = "Year", 
+         y = "Percentage Achieved", 
+         title = "Annual Goal Achievement: Bristol Bay") + 
+      scale_y_continuous(labels=percent) +
+      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+      guides(fill=guide_legend(title="")) + 
+      facet_wrap(~Species, ncol=1, scales="free_y") + 
+      theme_minimal() +
+      scale_fill_brewer(palette = "YlGnBu", direction = -1) 
+
+BB_esc <- BB_esc %>%
+  group_by(Year, SumAnnualCount) %>%
+  filter(Species == "sockeye")
+
+ggplot() +
+  geom_line(data = BB_esc, aes(x = Year, y = SumAnnualCount, color = "")) + 
+  geom_line(data = BBsockeye_catch, aes(x = Year, y = NumFish_SumbyGear, color = "Bu")) +
+      scale_y_continuous(sec.axis = sec_axis(~.,name = "Catch"), labels = comma)
+#Got the plot to work with both y axes, but the data looks really weird
+
+```
+
+
+
+```{r Southeast Case Study}
+SE_harvest <- h %>%
+  filter(SASAP.Region == "Southeast" & Species == "chinook")
+SE_esc <- EG_results %>%
+  filter(Species == "chinook" & LocationID == "Stikine River")
+SE <- EG_results %>%
+  filter(Species == "chinook" & LocationID == "Taku River")
+SE_esc <- bind_rows(SE, SE_esc)
+
+BBcase <- BBcase_study %>%
+  group_by(Species, Year) %>%
+  summarize(sum(Num_Fish))
+
+SE_esc <- SE_esc %>%
+  group_by(Species, sampleYear) %>%
+  summarize(sum(annualCount))
+SE_esc$SumAnnualCount <- SE_esc$`sum(annualCount)`
+
+SE_harvest <- SE_harvest %>%
+  group_by(Species, YEAR) %>%
+  summarize(sum(No_of_Fish))
+SE_harvest$SumNoFish <- SE_harvest$`sum(No_of_Fish)`
+
+#Not sure this plot really makes sense
+#Instead, plot to compare Stikine and Taku escapement, adding line of goals
+ggplot() +
+  geom_line(data = SE_esc, aes(x = sampleYear, y = SumAnnualCount, color = "")) +
+  geom_line(data = SE_harvest, aes(x = YEAR, y = SumNoFish, color = "Bu")) +
+      scale_y_continuous(sec.axis = sec_axis(~.,name = "Catch"), labels = comma) + 
+    labs(title = "Southeast Chinook Harvest (all districts) and Taku-Stikine Chinook Escapement") +
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+              #axis.text.x = element_text(angle = 50, hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "right", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93"), 
+              panel.grid.major.x = element_line(color="gray93"))
+```
+
+```{r}
+MT <
+```
