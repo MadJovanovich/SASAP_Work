@@ -51,4 +51,231 @@ leaflet(locations) %>%
   addMarkers(~ Lon, ~ Lat, popup = ~ LocationID, icon = markerIcon)
 
 ```
+---
+title: "WDAFS Plots"
+author: "Madeline Jovanovich"
+date: "5/18/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+**Note: this document is based on WDAFS_Talk.Rmd**, so I still need to copy and paste the subsets into this .Rmd in order to knit and product an html for my pages
+
+```{r packages, message=FALSE, warning=FALSE, paged.print=TRUE}
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggthemes)
+library(RColorBrewer)
+library(colorspace)
+library(scales)
+library(viridis)
+library(DT)
+```
+
+```{r read_in_data}
+#Need to change to KNB url once it is generated
+escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
+```
+
+```{r editing_data, message=FALSE, warning=FALSE}
+escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Pen. and Aleutians"
+
+escapement_goals$types[escapement_goals$types == "inRiver"] <- "In-River"
+
+escapement_goals$types[escapement_goals$types == "agreement"] <- "Agreement"
+
+Arctic <- data.frame("Arctic")
+colnames(Arctic) <- "SASAP.Region"
+
+YearQA <- escapement_goals %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
+
+#Bristol Bay is the only region that includes 2017, so let's remove it (causing issues anyways)
+
+escapement_goals_QAed <- escapement_goals %>%
+  filter(sampleYear < 2017) #This is done to ignore BB 2017 data, which is incomplete as of 5/2/18, but still included in cumulative escapement data
+
+escapement_goals_QAedkable <- escapement_goals_QAed %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
+#Print a kable to show year ranges, and make note of this exclusion
+
+eg_summary <- bind_rows(Arctic, escapement_goals_QAedkable) %>%
+  arrange(SASAP.Region)
+
+#Need to create a kable of this
+#Do I really want to remove NA values? If they are included in the df, I can show locations of annual counts with no goals
+#that way, EG_results would retains NAs, percents would omit them
+
+EG_results <- escapement_goals_QAed %>%
+  filter(!is.na(MetLower) | !is.na(MetUpper)) %>%
+  arrange(SASAP.Region, LocationID)
+
+sumna <- function(x) {
+    sum(x, na.rm = TRUE)
+}
+
+#Selecting a lot of columns here, but may eventually need to make a separate df: one with only a few pertinent columns for "percents", another with more data
+percents <- EG_results %>%
+    #select(SASAP.Region, LocationID, Species, sampleYear, MetLower, MetUpper) %>%
+    select(SASAP.Region, LocationID, Species, sampleYear, annualCount, types, MetLower, MetUpper) %>%
+    group_by(sampleYear, SASAP.Region, types, LocationID, Species) %>%
+    summarise(countMetLower = sumna(MetLower), 
+              countMetUpper = sumna(MetUpper), 
+              notMetUpper = sumna(!MetUpper), 
+              notMetLower = sumna(!MetLower),
+              percentMetUpper = (sumna(MetUpper)/(sumna(MetUpper) + sumna(!MetUpper))),
+              percentMetLower = (sumna(MetLower)/(sumna(MetLower) + sumna(!MetLower)))) %>%
+    arrange(SASAP.Region, LocationID)
+
+percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
+
+plottingdf <- bind_rows(percents, Arctic) %>%
+  arrange(SASAP.Region, LocationID)
+```
+
+```{r datatable_main_data_year_summary}
+datatable(eg_summary)
+```
+
+```{r datatable_percentsdf}
+datatable(plottingdf)
+```
+
+```{r summary_plotsI, fig.align="center", echo=FALSE}
+ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    labs(x = "",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Region") +
+    ggtitle("Escapement Goals by Region") +
+    theme_hc() +
+    theme(aspect.ratio = 0.5,
+          plot.background = element_rect(fill="gray96"), 
+          legend.text = element_text(size=8), 
+          legend.position = "bottom", 
+          legend.background = element_rect(fill="gray96"), 
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.ticks.x = element_line(color = "gray96")) +
+    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    theme(axis.text.x = element_text(angle = 50, hjust = 0.85)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("Agreement", "BEG", "In-River", "MT", "OEG", "SEG")) 
+```
+
+```{r summary_plotsII, fig.align="center", echo=FALSE}
+multiple_types <- subset(percents, SASAP.Region != "Copper River")
+multiple_types <- subset(multiple_types, SASAP.Region != "Kotzebue")
+
+ggplot(data = multiple_types, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+  geom_bar(width=1) +
+    labs(x = "Year",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Region") +
+    #scale_y_continuous(labels = f) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "none", 
+          legend.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+    guides(fill=guide_legend("Goal Type")) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
+    facet_wrap(~SASAP.Region, scales="free_y", ncol = 2)
+```
+
+```{r summary_plotsIII, fig.align="center", echo=FALSE}
+
+ggplot(data = EG_results, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    labs(x = "Year",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Species") +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    theme_hc() +
+    theme(aspect.ratio = 0.2,
+          plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
+    facet_wrap(~Species, scales="free_y", ncol=1)
+```
+
+```{r summary_plotsIV, fig.align="center", echo=FALSE}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs( x = "Year", 
+          y = "Proportion of Regions", 
+          title = "Annual Goal Achievement, Statewide") +
+    scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+  scale_fill_brewer(palette = "YlGnBu", direction = -1)
+```
+
+```{r summary_plotsV, fig.align="center", echo=FALSE}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Proportio of Years", 
+         title = "Annual Goal Achievement") +
+    scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~SASAP.Region, ncol = 2) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+              #axis.text.x = element_text(angle = 50, hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "none", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
+```
+
+```{r summary_plotsVI, fig.align="center", echo=FALSE}
+ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(position='fill', width = 1) +
+    labs(x = "Year", 
+         y = "Proportion Achieved", 
+         title = "Statewide Goal Achievement by Species") + 
+    scale_y_continuous(labels=percent) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    facet_wrap(~Species, ncol=1, scales="free_y") + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+              #axis.text.x = element_text(hjust = 0.95),
+              legend.text = element_text(size=8), 
+              legend.position = "", 
+              legend.background = element_rect(fill="gray98"),
+              strip.background = element_rect(fill = "gray98"),
+              panel.grid.major.y = element_line(color="gray93")) +
+    scale_fill_brewer(palette = "YlGnBu", direction = -1)
+```
+
+
 
