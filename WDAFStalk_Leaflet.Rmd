@@ -1,11 +1,14 @@
 ---
-title: "WDAFStalk_Leaflet"
+title: "WDAFS Talk Leaflet"
 author: "Madeline Jovanovich"
 date: "5/21/2018"
-output: html_document
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
 ---
 
-```{r, message=FALSE}
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
 library(leaflet)
 library(dplyr)
 library(tidyr)
@@ -27,17 +30,17 @@ escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = F
 ```
 
 ```{r}
-mean_esc <- escapement_goals %>% 
-  group_by(Species, SASAP.Region, sampleYear, LocationID) %>% 
-  summarize(mean_esapement = mean(annualCount))
-ggplot(mean_esc, aes(Species, mean_esapement)) +
-  geom_col() +
-  coord_flip() 
+mean_esc <- escapement_goals %>%
+  group_by(SASAP.Region, LocationID, Lat, Lon, Species) %>%
+  summarize (meanby_loc = mean(annualCount)) %>%
+   mutate_if(is.numeric, funs(round(., 0)))
+datatable(mean_esc)
 ```
 
-```{r}
+
+```{r, fig.align='center', echo=FALSE}
 locations <- escapement_goals %>% 
-  distinct(LocationID, Lat, Lon) %>% 
+  distinct(SASAP.Region, LocationID, Lat, Lon) %>% 
   drop_na()
 datatable(locations)
 ```
@@ -48,6 +51,8 @@ markerIcon <- makeIcon(
   iconWidth = 25, iconHeight = 41,
   iconAnchorX = 12, iconAnchorY = 41
 )
+```
+```{r, fig.align='center'}
 
 leaflet(locations) %>% 
   addTiles() %>% 
