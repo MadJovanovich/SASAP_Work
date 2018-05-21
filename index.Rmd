@@ -6,8 +6,8 @@ output: html_document
 ---
 
 
-```{r}
-suppressPackageStartupMessages({
+```{r, message=FALSE}
+
   library(leaflet)
   library(dplyr)
   library(tidyr)
@@ -15,7 +15,13 @@ suppressPackageStartupMessages({
   library(DT)
   library(scales)
   library(knitr)
-})
+
+library(ggthemes)
+library(RColorBrewer)
+library(colorspace)
+library(scales)
+library(viridis)
+library(DT)
 ```
 
 ```{r Reading in data}
@@ -41,40 +47,19 @@ datatable(locations)
 
 ```{r}
 markerIcon <- makeIcon(
-  iconUrl = "https://use.fontawesome.com/releases/v5.0.13/svgs/solid/anchor.svg",
+  iconUrl = "~/R/icons/double_droplet.svg",
   iconWidth = 25, iconHeight = 41,
   iconAnchorX = 12, iconAnchorY = 41
 )
+
+
 
 leaflet(locations) %>% 
   addTiles() %>% 
   addMarkers(~ Lon, ~ Lat, popup = ~ LocationID, icon = markerIcon)
 
 ```
----
-title: "WDAFS Plots"
-author: "Madeline Jovanovich"
-date: "5/18/2018"
-output: 
-  html_document: 
-    highlight: tango
-    theme: paper
----
 
-**Note: this document is based on WDAFS_Talk.Rmd**, so I still need to copy and paste the subsets into this .Rmd in order to knit and product an html for my pages
-
-```{r packages, message=FALSE, warning=FALSE, paged.print=TRUE}
-library(knitr)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(ggthemes)
-library(RColorBrewer)
-library(colorspace)
-library(scales)
-library(viridis)
-library(DT)
-```
 
 ```{r read_in_data}
 #Need to change to KNB url once it is generated

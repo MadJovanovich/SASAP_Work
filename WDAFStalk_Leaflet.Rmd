@@ -1,0 +1,56 @@
+---
+title: "WDAFStalk_Leaflet"
+author: "Madeline Jovanovich"
+date: "5/21/2018"
+output: html_document
+---
+
+```{r, message=FALSE}
+library(leaflet)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(DT)
+library(scales)
+library(knitr)
+library(ggthemes)
+library(RColorBrewer)
+library(colorspace)
+library(scales)
+library(viridis)
+library(DT)
+```
+
+```{r Reading in data}
+#Need to change to KNB url once it is generated
+escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+mean_esc <- escapement_goals %>% 
+  group_by(Species, SASAP.Region, sampleYear, LocationID) %>% 
+  summarize(mean_esapement = mean(annualCount))
+ggplot(mean_esc, aes(Species, mean_esapement)) +
+  geom_col() +
+  coord_flip() 
+```
+
+```{r}
+locations <- escapement_goals %>% 
+  distinct(LocationID, Lat, Lon) %>% 
+  drop_na()
+datatable(locations)
+```
+
+```{r}
+markerIcon <- makeIcon(
+  iconUrl = "~/R/icons/anchor.svg",
+  iconWidth = 25, iconHeight = 41,
+  iconAnchorX = 12, iconAnchorY = 41
+)
+
+leaflet(locations) %>% 
+  addTiles() %>% 
+  addMarkers(~ Lon, ~ Lat, popup = ~ LocationID, icon = markerIcon)
+
+```

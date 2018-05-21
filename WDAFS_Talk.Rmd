@@ -136,7 +136,6 @@ library(viridis)
 ```{r Reading in data}
 #Need to change to KNB url once it is generated
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
-
 ```
 
 ```{r Reading in other occassionally useful data sets, eval=FALSE, include=FALSE}
@@ -211,6 +210,9 @@ escapement_goals_QAedkable <- escapement_goals_QAed %>%
   summarize(min(sampleYear),
             max(sampleYear))
 #Print a kable to show year ranges, and make note of this exclusion
+
+eg_summary <- bind_rows(Arctic, escapement_goals_QAedkable) %>%
+  arrange(SASAP.Region)
 ```
 
 ```{r kable showing Orginial data}
