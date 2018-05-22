@@ -24,12 +24,12 @@ library(viridis)
 library(DT)
 ```
 
-```{r Reading in data}
+```{r Reading in data, echo=FALSE}
 #Need to change to KNB url once it is generated
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE)
 ```
 
-```{r}
+```{r, include=FALSE}
 mean_esc <- escapement_goals %>%
   group_by(SASAP.Region, LocationID, Lat, Lon, Species) %>%
   summarize (meanby_loc = mean(annualCount)) %>%
@@ -42,20 +42,22 @@ datatable(mean_esc)
 locations <- escapement_goals %>% 
   distinct(SASAP.Region, LocationID, Lat, Lon) %>% 
   drop_na()
+```
+```{r, echo=FALSE}
 datatable(locations)
 ```
 
-```{r}
+```{r, echo=FALSE}
 markerIcon <- makeIcon(
-  iconUrl = "~/R/icons/anchor.svg",
+  iconUrl = "~/R/icons/salmon.png",
   iconWidth = 25, iconHeight = 41,
   iconAnchorX = 12, iconAnchorY = 41
 )
 ```
-```{r, fig.align='center'}
+```{r, fig.align='center', echo=FALSE}
 
-leaflet(locations) %>% 
+leaflet(mean_esc) %>% 
   addTiles() %>% 
-  addMarkers(~ Lon, ~ Lat, popup = ~ LocationID, icon = markerIcon)
+  addMarkers(~ Lon, ~ Lat, popup = ~ Species, icon = markerIcon, clusterOptions = markerClusterOptions())
 
 ```

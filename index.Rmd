@@ -47,7 +47,7 @@ datatable(locations)
 
 ```{r}
 markerIcon <- makeIcon(
-  iconUrl = "~/R/icons/double_droplet.svg",
+  iconUrl = "~/R/icons/anchor.svg",
   iconWidth = 25, iconHeight = 41,
   iconAnchorX = 12, iconAnchorY = 41
 )
