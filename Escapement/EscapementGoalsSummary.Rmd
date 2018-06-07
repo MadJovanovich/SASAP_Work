@@ -1,0 +1,554 @@
+---
+title: "Annual Escapement and Goals"
+author: "Madeline Jovanovich"
+date: "5/28/2018"
+output: html_document
+---
+For some unknown reason I started added harvest to this rmd, but that was a mistake. I need to make three htmls: 
+
+1. escapement with goals 
+2. harvest
+3. hatchery
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) #do I need this code chunk? 
+```
+
+```{r libraries, message=FALSE, warning=FALSE, echo=FALSE}
+library(leaflet)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(DT)
+library(scales)
+library(knitr)
+library(ggthemes)
+library(RColorBrewer)
+library(colorspace)
+library(scales)
+library(viridis)
+library(DT)
+```
+
+Need to change to KNB url once it is generated: **check on this** 
+```{r data}
+escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE) %>%
+  arrange(SASAP.Region, LocationID, Species)
+```
+
+#Mad Themes for Plotting
+```{r mad_line}
+#how do I get this to work? 
+mad_line <- theme_hc %>%
+  theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "none", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0)))
+
+ggplot(data = Kvichak, aes(x = sampleYear, y = annualCount, color = Species)) + 
+    geom_line(size = 1) +
+      expand_limits(y=c(0, 1000000)) +
+      scale_y_continuous(labels=comma) +
+      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+      labs(x = "Year", 
+           y = "Annual Escapement", 
+           title = "Kvichak River Sockeye") + 
+      guides(fill=guide_legend(title="Species")) + 
+      theme_hc() +
+       theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "none", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0))) +
+      scale_color_manual(values = species_color) + 
+geom_hline(yintercept = 2e+06)
+```
+
+#Summary Tables
+```{r escapement_range, include = FALSE}
+range <- escapement_goals %>%
+  group_by(SASAP.Region, Species) %>%
+  summarize (min_count = min(annualCount), max_count = max(annualCount), min_year = min(sampleYear), max_year = max(sampleYear)) %>%
+   mutate_if(is.numeric, funs(round(., 0)))
+datatable(range)
+```
+
+Need to learn how to count number of character observations... feel like I've done that before.
+```{r location_count, include = FALSE}
+locations <- escapement_goals %>% 
+  group_by(SASAP.Region, Species) 
+#%>%
+ # summarize(count = count(unique(LocationID)) #this doesn't work, but this line shows what I would like to do 
+datatable(locations)
+```
+
+Leaflet map included in M. Jovanovich's WDAFS talk 
+```{r location_lat_lon, include=FALSE}
+mean_esc <- escapement_goals %>%
+  group_by(SASAP.Region, Lat, Lon, Species, LocationID) %>%
+  summarize (meanby_sp = mean(annualCount)) %>%
+   mutate_if(is.numeric, funs(round(., 0))) %>%
+  arrange(SASAP.Region)
+datatable(mean_esc)
+#I want this to show the average species count by region, not by location
+```
+
+```{r leaflet, echo=FALSE}
+markerIcon <- makeIcon(
+  iconUrl = "~/R/icons/salmon.png",
+  iconWidth = 25, iconHeight = 41,
+  iconAnchorX = 12, iconAnchorY = 41
+)
+leaflet(escapement_goals) %>% 
+  addTiles() %>% 
+  addMarkers(~ Lon, ~ Lat, popup = ~ Species, icon = markerIcon, clusterOptions = markerClusterOptions())
+```
+
+```{r goal_by_regionI}
+ggplot(data = plottingdf, aes(x = SASAP.Region, fill=factor(types), y=(..count..))) + 
+    geom_bar() +
+    labs(x = "",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Region", 
+         subtitle = "note: y-axis is an accumulation of all goals for all species over time") +
+    ggtitle("Escapement Goals by Region") +
+    theme_hc() +
+    theme(aspect.ratio = 0.5,
+          plot.background = element_rect(fill="gray96"), 
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray96"), 
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.ticks.x = element_line(color = "gray96")) +
+    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    theme(axis.text.x = element_text(angle = 50, hjust = 0.85)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral", breaks = c("Agreement", "BEG", "In-River", "MT", "OEG", "SEG")) 
+```
+
+Note multiple_types created here
+```{r goals_by_regionII, fig.align="center", echo=FALSE}
+#Make this into pie charts
+multiple_types <- subset(percents, SASAP.Region != "Copper River")
+multiple_types <- subset(multiple_types, SASAP.Region != "Kotzebue")
+
+ggplot(data = multiple_types, aes(x = sampleYear, fill=factor(types), y=(..count..))) + 
+  geom_bar(width=1) +
+    labs(x = "Year",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Region") +
+    #scale_y_continuous(labels = f) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "none", 
+          legend.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+    guides(fill=guide_legend("Goal Type")) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
+    facet_wrap(~SASAP.Region, scales="free_y", ncol = 2)
+```
+
+```{r goals_by_species, fig.align="center", echo=FALSE}
+ggplot(data = EG_results, aes(x = "", fill=factor(types))) + 
+    geom_bar() +
+    labs(x = "Year",
+         y = "Number of Goals", 
+         title = "Escapement Goals by Species") +
+    #scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    theme_hc() +
+    theme(aspect.ratio = 0.2,
+          plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          axis.text.x = element_text(angle = 50, hjust = 0.95),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93")) +
+    guides(fill=guide_legend("Goal Type"), legend.title=element_text(size=10)) +
+    scale_fill_brewer("Colors in Spectral", palette="Spectral") + 
+    facet_wrap(~Species, ncol=1) + 
+  coord_polar("y")
+#This looks crazy right now, but really cool how it's plotting on a 3D plane! 
+```
+```{r goals_by_regionIII}
+#Need to further look in how to make these; not working when I add facet_wrap 
+ggplot(data = percents, aes(x = "", fill=factor(metUnmetExceeded))) + 
+    geom_bar(width = 1) +
+    labs(title = "Annual Goal Achievement, Statewide") +
+    scale_y_continuous(labels=percent) + 
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+  scale_fill_brewer(palette = "YlGnBu", direction = -1) +
+  coord_polar("y") +
+  theme(axis.text.x=element_blank()) + 
+  facet_wrap(~SASAP.Region)
+```
+
+```{r statewide_achievement, fig.align="center", echo=FALSE}
+ggplot(data = percents, aes(x = "", fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(width = 1) +
+    labs(title = "Annual Goal Achievement, Statewide") +
+    scale_y_continuous(labels=percent) + 
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+  scale_fill_brewer(palette = "YlGnBu", direction = -1) +
+  coord_polar("y") +
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank())
+
+```
+
+#Escapement + Goal Bounds 
+
+Be sure to include the Arctic here, to show lack of escapement and goals. 
+
+Workflow: complete this task for one region, then adapt it to each region
+
+1. Summary for each region
+  * escapement by location? 
+  * escapement by species 
+2. Escapement over time for subset of locations
+  * include a datatable of locations within each region
+  * chose a couple obvious examples, therefore showing how to subset by location 
+
+
+```{r}
+ggplot(data = Kvichak, aes(x = sampleYear, y = annualCount, color = Species)) + 
+    geom_line(size = 1) +
+      expand_limits(y=c(0, 1000000)) +
+      scale_y_continuous(labels=comma) +
+      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+      labs(x = "Year", 
+           y = "Annual Escapement", 
+           title = "Kvichak River Sockeye") + 
+      guides(fill=guide_legend(title="Species")) + 
+      theme_hc() +
+       theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "none", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0))) +
+      scale_color_manual(values = species_color) + 
+geom_hline(yintercept = 2e+06)
+```
+
+
+```{r}
+ggplot(harvest, aes(x = Year, y = No_Fish, fill = Species)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(~Area, scales = "free_y")
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = No_Fish, fill = Area)) + 
+  geom_bar(stat = "identity") + 
+  theme(legend.position = "bottom") +
+  facet_wrap(~Species, scales = "free_y")
+```
+
+
+```{r}
+ggplot(harvest, aes(x = Year, y = Net_Pounds, fill = Species)) + 
+    geom_bar(stat = "identity") + 
+    facet_wrap(~Area, scales = "free_y")
+```
+
+
+```{r}
+ggplot(harvest, aes(x = Year, y = Permit_Count))
+```
+
+
+```{r}
+ggplot(harvest, aes(x = Year, y = Vessel_Count))
+```
+
+##Pairing Harvest and Escapement 
+
+##Alaska Peninsula and Aleutian Islands
+
+```{r akpenaleut_locations}
+akpenaleut_locations <- escapement_goals %>%
+  group_by(LocationID) %>%
+  select(LocationID) #why is this showing one line for each row of data instead of one line for each locationID? 
+datatable(akpenaleut_locations)
+
+```
+
+```{r example_plot_with_theme}
+ggplot(data = Kvichak, aes(x = sampleYear, y = annualCount, color = Species)) + 
+    geom_line(size = 1) +
+      expand_limits(y=c(0, 1000000)) +
+      scale_y_continuous(labels=comma) +
+      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+      labs(x = "Year", 
+           y = "Annual Escapement", 
+           title = "Kvichak River Sockeye") + 
+      guides(fill=guide_legend(title="Species")) + 
+      theme_hc() +
+       theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "none", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0))) +
+      scale_color_manual(values = species_color) + 
+geom_hline(yintercept = 2e+06)
+```
+
+
+###Alaska Peninsula and Aleutian Islands by Species  
+
+##Bristol Bay
+
+###Bristol Bay by Species
+
+##Chignik
+
+###Chignik by Species 
+
+##Cook Inlet
+
+###Cook Inlet by Species
+
+##Copper River 
+
+###Copper River by Species 
+
+##Kodiak
+
+###Kodiak by Species 
+
+##Kotzebue 
+
+###Kotzebue by Species 
+
+##Kuskokwim 
+
+###Kuskokwim by Species 
+
+```{r Kusko_all_species}
+ggplot(joined, aes(x=Year, y=NumFish, fill=DataType)) +
+    geom_bar(stat = "identity") + 
+    labs (title = "Kuskokwim River Harvest and Escapement", 
+          subtitle = "all species", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0)) +
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"), 
+          axis.text.x = element_text(angle = 50, hjust = 0.85))
+
+Kuskojoined_summed <- joined %>% 
+  group_by(Species, Year) %>% 
+  summarize(sum_count = sum(NumFish))
+
+ggplot(Kuskojoined_summed, aes(x=Year, y=sum_count)) + #color = #need to figure out how to get DataType to work
+    geom_line(size = 1) + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Chinook", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), limits = c(0, max(Chinook$NumFish)), breaks = pretty_breaks(n = 4)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(color=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0))) 
+#Need to make this plot summed annual counts so there is one observation per year
+```
+```{r Kusko_Chinook}
+Chinook <- subset(joined, Species == "chinook")
+
+ggplot(Chinook, aes(x=Year, y=NumFish, fill=DataType)) +
+    geom_bar(stat = "identity") + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Chinook", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"), 
+          axis.text.x = element_text(angle = 50, hjust = 0.85))
+
+ggplot(Chinook, aes(x=Year, y=NumFish, color=DataType)) +
+    geom_line(size = 1) + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Chinook", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), limits = c(0, max(Chinook$NumFish)), breaks = pretty_breaks(n = 4)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(color=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0))) + 
+  geom_line()
+#I NEED TO MAKE A SUBSET OF KUSKOKWIM RIVER CHINOOK, CHOOSE ONE SYSTEM TO LOOK AT, PLOT THAT ESCAPEMENT GOAL ON TOP OF THESE PLOTS 
+```
+```{r Kusko_sockeye}
+Sockeye <- subset(joined, Species == "sockeye")
+
+ggplot(Sockeye, aes(x=Year, y=NumFish, fill=DataType)) +
+    geom_bar(stat = "identity") + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Sockeye", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), breaks = pretty_breaks(n = 6)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"), 
+          axis.text.x = element_text(angle = 50, hjust = 0.85))
+
+ggplot(Sockeye, aes(x=Year, y=NumFish, color=DataType)) +
+    geom_line(size = 1) + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Sockeye", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), limits = c(0, max(Sockeye$NumFish)), breaks = pretty_breaks(n = 6)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(color=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0)))
+```
+```{r Kusko_coho}
+Coho <- subset(joined, Species == "coho")
+
+ggplot(Coho, aes(x=Year, y=NumFish, fill=DataType)) +
+    geom_bar(stat = "identity") + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Coho", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), breaks = pretty_breaks(n = 5)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"), 
+          axis.text.x = element_text(angle = 50, hjust = 0.85))
+
+ggplot(Coho, aes(x=Year, y=NumFish, color=DataType)) +
+    geom_line(size = 1) + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Coho", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), limits = c(0, max(Coho$NumFish)), breaks = pretty_breaks(n = 5)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(color=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0)))
+```
+```{r Kusko_chum}
+Chum <- subset(joined, Species == "chum")
+
+ggplot(Chum, aes(x=Year, y=NumFish, fill=DataType)) +
+    geom_bar(stat = "identity") + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Chum", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), breaks = pretty_breaks(n = 5)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"), 
+          axis.text.x = element_text(angle = 50, hjust = 0.85))
+
+ggplot(Chum, aes(x=Year, y=NumFish, color=DataType)) +
+    geom_line(size = 1) + 
+    labs (title = "Kuskokwim River Harvest and Escapement: Chum", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), limits = c(0, 3000000), breaks = pretty_breaks(n = 5)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(color=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0)))
+```
+
+##Norton Sound 
+
+###Norton Sound by Species 
+
+##Prince William Sound
+
+###Prince William Sound by Species
+
+##Southeast 
+
+###Southeast by Species 
+
+##Yukon 
+
+###Yukon by Species 
+

@@ -1,0 +1,141 @@
+---
+title: "Hatchery Returns Reformatting"
+author: "Madeline Jovanovich"
+date: "2/23/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+```
+
+```{r, messages=FALSE}
+library(knitr)
+library(dplyr)
+library(readxl)
+library(tidyr)
+library(ggplot2)
+library(scales)
+```
+
+This file processes hatchery returns data provided to us by Mark Stopha.
+
+Notes: 
+
+*   "Project" generally denotes the release site.
+*   "Other Commercial" category - in some early years, the harvest was not broken out by gear, and only an estimate for "total commercial" was derived.
+*   "Other" category is a sometimes used catchall for such things
+
+
+Read in the original excel file, sort the data, and fill in NAs ().
+
+```{r}
+returns <- read_xlsx("/home/sfreund/Other-SASAP-edits/Hatchery/ADFG_Obtained_AKReturns.xlsx", sheet = 1)
+colnames(returns)<-c("Year", "Region", "Hatchery", "Project", "Species", "Seine", "Gillnet", "Troll", "OtherCommercial",
+                     "Sport", "PersUse", "Subsis", "Brood", "CR_Catch", "Other")
+returns <- returns %>% arrange(Year, Region, Hatchery, Species)
+```
+
+Cells with "-" have values of "0" in the excel sheet. 
+No true 0s present; convert cells to NA and check the classes (numeric vs character) for each column.
+
+```{r}
+returns$Seine <- as.numeric(gsub(",","",returns$Seine))
+returns$Gillnet <- as.numeric(gsub(",","",returns$Gillnet))
+returns$Troll <- as.numeric(gsub(",","",returns$Troll))
+returns$OtherCommercial <- as.numeric(gsub(",","",returns$OtherCommercial))
+returns$Sport <- as.numeric(gsub(",","",returns$Sport))
+returns$PersUse <- as.numeric(gsub(",","",returns$PersUse))
+returns$Subsis <- as.numeric(gsub(",","",returns$Subsis))
+returns$Brood <- as.numeric(gsub(",","",returns$Brood))
+returns$CR_Catch <- as.numeric(gsub(",","",returns$CR_Catch))
+returns$Other <- as.numeric(gsub(",","",returns$Other))
+```
+```{r, fig.align="center"}
+kable(returns[1:8,], caption = "ADF&G Obtained Alaska Returns")
+```
+
+Ensure region and species names are congruent within the data set. Not all SASAP regions can be broken out at this point.
+```{r}
+returns$Region[which(returns$Region == "PRINCE WILLIAM SOUND")] <- "Prince William Sound"
+returns$Region[which(returns$Region == "SOUTHEAST")] <- "Southeast"
+returns$Species<-tolower(returns$Species)
+```
+
+Create table displaying returns by catch type; make data more readable.
+
+```{r}
+
+returns_by_catchtype <- gather(returns, key = "CatchType", value = "Catch", 6:15, na.rm = TRUE, convert = FALSE)
+returns_by_catchtype <- returns_by_catchtype %>% arrange(Year, Region, Hatchery, Species)
+
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'Seine')] <- 'commercial seine'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'Gillnet')] <- 'commercial gillnet'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'Troll')] <- 'commercial troll'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'OtherCommercial')] <- 'commercial other'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'Sport')] <- 'sport fish'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'PersUse')] <- 'personal use'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'Subsis')] <- 'subsistence'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'Brood')] <- 'brood take'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'CR_Catch')] <- 'cost recovery'
+returns_by_catchtype$CatchType[which(returns_by_catchtype$CatchType == 'Other')] <- 'other'
+```
+
+SASAP region is assigned according to the "Project" column, which roughly corresponds to the release site. This column is cross referenced to the [hatchery releases dataset](https://knb.ecoinformatics.org/#view/urn:uuid:6329b75d-6d0e-43bd-a499-b788506a8459) to determine the district of the release site. This enables us to break apart the regions in the original dataset, which aggregated some SASAP regions.
+
+```{r}
+lut <- read.csv("/home/sjclark/hatchery_returns_lut.csv", stringsAsFactors = F)
+
+returns_by_catchtype <- left_join(returns_by_catchtype, lut)
+returns_by_catchtype$Region <- NULL
+
+returns_by_catchtype <- returns_by_catchtype[, c("SASAP.Region", "Hatchery", "Project", "Species", "Year", "CatchType", "Catch")]
+```
+
+There are lots of rows with 0 in the catch column which should actually be `NA`, since there was no number reported for that category. We can remove these.
+
+```{r}
+returns_by_catchtype <- subset(returns_by_catchtype, Catch != 0)
+```
+
+```{r, fig.align="center"}
+kable(returns_by_catchtype[1:8,], caption = "Returns by Catch Type", row.names=FALSE)
+```
+
+
+# QA
+
+Note that negative numbers in this dataset are real. Sometimes when a sample of fish is taken at the hatchery or the escapement to a system where a hatchery is located, not all the fish may originate from that hatchery.  The fish may be wild fish from the system or hatchery fish from another hatchery. The negative numbers are there to reduce the total of hatchery fish that were counted in the broodstock or escapement by those non-hatchery fish.
+
+```{r}
+returns_species <- returns_by_catchtype %>%
+    group_by(Year, Species) %>% 
+    summarise(TotalReturn = sum(Catch))
+
+
+ggplot(returns_species, aes(x=Year, y=TotalReturn, color=Species, fill=Species)) + 
+   geom_bar(stat = "identity") + 
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Returns", 
+         y = "Total Returns", 
+         x = "Year")
+```
+
+```{r}
+returns_region <- returns_by_catchtype %>%
+    group_by(Year, SASAP.Region) %>% 
+    summarise(TotalReturn = sum(Catch))
+
+
+ggplot(returns_region, aes(x=Year, y=TotalReturn, color = SASAP.Region, fill=SASAP.Region)) + 
+   geom_bar(stat = "identity") + 
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Returns", 
+         y = "Total Returns", 
+         x = "Year")
+```
+

@@ -37,7 +37,6 @@ mean_esc <- escapement_goals %>%
 datatable(mean_esc)
 ```
 
-
 ```{r, fig.align='center', echo=FALSE}
 locations <- escapement_goals %>% 
   distinct(SASAP.Region, LocationID, Lat, Lon) %>% 

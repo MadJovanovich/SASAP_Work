@@ -92,6 +92,7 @@ plottingdf <- bind_rows(percents, Arctic) %>%
 
 ```{r datatable_main_data_year_summary}
 datatable(eg_summary)
+kable(eg_summary, caption = "Temporal Distribution of Escapement Data")
 ```
 
 ```{r datatable_percentsdf}
@@ -186,7 +187,7 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
 ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..count..))) + 
     geom_bar(position='fill', width = 1) +
     labs(x = "Year", 
-         y = "Proportio of Years", 
+         y = "Proportion of Years", 
          title = "Annual Goal Achievement") +
     scale_y_continuous(labels=percent) + 
     scale_x_continuous(breaks = pretty_breaks(n = 10)) +
@@ -223,5 +224,32 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
               panel.grid.major.y = element_line(color="gray93")) +
     scale_fill_brewer(palette = "YlGnBu", direction = -1)
 ```
+
+
+```{r, eval=FALSE}
+inRiver <- percents %>%
+  filter(types == "In-River")
+
+BEG <- percents %>%
+  filter(types == "BEG") %>%
+  filter(sampleYear == 2016)
+
+SEG <- percents %>%
+  filter(types == "SEG") %>%
+  filter(sampleYear == 2016)
+
+OEG <- percents %>%
+  filter(types == "OEG") %>%
+  filter(sampleYear == 2016)
+
+Agreement <- percents %>%
+  filter(types == "Agreement") 
+
+YukRange <- YUKpercents %>%
+  summarize(max(sampleYear))
+
+```
+
+
 
 

@@ -1,0 +1,187 @@
+---
+title: "Hatchery Releases Reformatting, ADF&G MTA Data"
+author: "Emily O'Dean & Madeline Jovanovich"
+date: "3/22/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,  results="hide", message=FALSE, warning=FALSE}
+library(tidyverse)
+library(stringi)
+require(scales)
+library(janitor)
+```
+
+### Join original data to location information 
+
+
+Read in salmon original releases data and latitude/longitudes
+
+```{r,  results="hide", message = F, warning = F}
+original <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A8e5149b1-0a78-4088-88fb-5ef999ec2b06", skip = 24)
+
+lut <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A0425efb9-aa6b-40ce-b133-758fc3027de1")
+
+
+original <- clean_names(original, case = "upper_camel")
+
+```
+
+```{r}
+original$DistrictAndSub <- NA
+pat <- '\\d{3}-\\d{2}'
+index <- grep(pat, original$ReleaseSite)
+original[index,]$DistrictAndSub <- regmatches(original$ReleaseSite,regexpr(pat,original$ReleaseSite))
+
+original$District <- str_sub(original$DistrictAndSub, 1, 3)
+original$District <- as.numeric(original$District)
+original$ReleaseSite <- stri_trim_both(original$ReleaseSite)
+```
+
+Correct individual records that didn't pattern match
+
+```{r}
+original[which(original$ReleaseSite=="VALDEZ OLD TOWN SITE 221"),]$District <- 221
+original[which(original$ReleaseSite=="TAMGAS CR+DAVIS CR 101"),]$District <- 101
+original[which(original$ReleaseSite=="PETERSBURG AREA 106"),]$District <- 106
+original[which(original$ReleaseSite=="CAMPBELL+SHIP CR 247"),]$District <- 247
+original[which(original$ReleaseSite=="OUZINKIE BOAT HARBOR 259"),]$District <- 259
+original[which(original$ReleaseSite=="BEAR COVE+HALIBUT PT113"),]$District <- 113
+original[which(original$ReleaseSite=="LITTLE SUSITNA R 247"),]$District <- 247
+original[which(original$ReleaseSite=="DISAPPEARANCE CR 102"),]$District <- 102
+original[which(original$ReleaseSite=="PORT ST NICHOLAS CR 10360"),]$District <- 103
+original[which(original$ReleaseSite=="COTTONWOOD LK SYST"),]$District <- 247
+original[which(original$ReleaseSite=="R-PORCUPINE R"),]$District <- 108
+original[which(original$ReleaseSite=="COTTONWOOD+KINGS LK"),]$District <- 247
+original[which(original$ReleaseSite=="BARRY LK"),]$District <- 259
+original[which(original$ReleaseSite=="BIG (LILLY) LK"),]$District <- 259
+original[which(original$ReleaseSite=="CRAWFISH INLET+HALIBUT PT"),]$District <- 108
+original[which(original$ReleaseSite=="R-TRAPPER LK"),]$District <- 111
+original[which(original$ReleaseSite=="R-TUYA LK"),]$District <- 108
+original[which(original$ReleaseSite=="WHITTIER+CORDOVA"),]$District <- 103
+original[which(original$ReleaseSite=="CRYSTAL LK (JNU)"),]$District <- 108
+original[which(original$ReleaseSite=="GLACIER LK (JNU)"),]$District <- 108
+original[which(original$ReleaseSite=="MORAINE LK"),]$District <- 108
+original[which(original$ReleaseSite=="WHITTIER+LAKE BAY"),]$District <- 223
+original[which(original$ReleaseSite=="WHITTIER+FLEMMING+LK"),]$District <- 223
+original[which(original$ReleaseSite=="R-NAHLIN R"),]$District <- 111
+original[which(original$ReleaseSite=="R-TATSAMENIE LK"),]$District <- 111
+original[which(original$ReleaseSite=="GENGEN LK OHMER CR"),]$District <- 108
+original[which(original$ReleaseSite=="CRYST+SALM+SHEEP+MEN"),]$District <- 106
+original[which(original$ReleaseSite=="CRYSTAL+OHMER+FALLS"),]$District <- 108
+original[which(original$ReleaseSite=="DECEPTION+ANDERSON"),]$District <- 247
+original[which(original$ReleaseSite=="OLD FRANKS+KLAWOCK R"),]$District <- 103
+original[which(original$ReleaseSite=="R-TAHLTAN LK"),]$District <- 108
+```
+
+Join release data with lat/lon information 
+
+```{r}
+joined <- left_join(original, lut)
+```
+
+### Plot coverage for QA
+```{r, warning=FALSE, fig.align="center", fig.width=10}
+ggplot(data = joined, aes(x = YearReleased, y = TotalReleased, fill = Species)) + 
+    geom_bar(stat="identity", position="stack") + 
+    xlab("Year") + 
+    ylab("Release count") + 
+    scale_y_continuous(label = comma) + 
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle=45)) + 
+    facet_wrap(~SASAP.Region)
+```
+
+### Clean up data frame
+```{r}
+names(joined)[7] <- "BroodYear"
+
+names(joined)[17] <- "NumAdClippedTagged"
+
+names(joined)[24] <- "MarkID"
+names(joined)[25] <- "CommentPSMFC"
+
+names(joined)[28] <- "SASAPRegion"
+```
+
+
+```{r}
+hatchery <- joined
+
+hatchery$Status <- tolower(hatchery$Status)
+#need to make LocationFacilityOrWildStock, Stock normal capitalization
+hatchery$Species <- tolower(hatchery$Species)
+hatchery$Stage <- tolower(hatchery$Stage)
+
+#hatchery$TagCode <- as.integer(hatchery$TagCode) #this will turn some values into NA since some tag codes look like "B30307"
+
+hatchery$Length <- as.numeric(hatchery$Length)
+hatchery$NumAdClippedTagged <- as.numeric(hatchery$NumAdClippedTagged)
+hatchery$TotalReleased <- as.numeric(hatchery$TotalReleased)
+hatchery$District <- as.numeric(hatchery$District)
+
+
+hatchery <- hatchery[, c(14, 28, 3, 10, 4, 6, 18, 5, 15, 1, 2, 7, 8, 9, 11, 12, 13, 16, 17, 19, 20, 21, 22, 23, 24, 26, 27, 25)]
+hatchery <- subset(hatchery, select = -c(State))
+```
+
+
+```{r}
+dropcols <- c("ExperimentCode", "MarkCode", "ThermalMarkHatchCode", "ThermalMarkRBr", "MarkID", "CommentPSMFC", "DistrictAndSub")
+plottingdf <- hatchery[, -which(colnames(hatchery) %in% dropcols)]
+```
+
+
+## More QA Plots 
+
+
+```{r, fig.align="center"}
+ggplot(plottingdf, aes(x=YearReleased, y=TotalReleased, color=Species, fill=Species)) + 
+    geom_bar(stat = "identity") + 
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Individuals Released",
+         y = "Total Released", 
+         x = "Year") 
+
+
+ggplot(plottingdf, aes(x=YearReleased, y=TotalReleased, color=SASAPRegion, fill=SASAPRegion)) + 
+    geom_bar(stat = "identity") + 
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Individuals Released", 
+         y = "Total Released", 
+         x = "Year", 
+         caption = "insert caption here", 
+         color = "Region", 
+         fill = "Region")
+#Need to sum by region and year before doing a line plot 
+
+ReleasedSum <- plottingdf %>%
+    group_by(SASAPRegion, YearReleased, Species) %>% 
+    select(TotalReleased) %>% 
+    summarise_all(funs(sum = sum))
+names(ReleasedSum)[names(ReleasedSum) == 'sum'] <- 'SumTotalReleased'
+#There still appears to be multiple data points per year 
+ggplot(ReleasedSum, aes(x=YearReleased, y=SumTotalReleased, color=Species, fill=Species)) + 
+    geom_line() + 
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Individuals Released", 
+         y = "Total Released", 
+         x = "Year")
+
+plottingstage <- na.omit(plottingdf)
+ggplot(plottingstage, aes(x=YearReleased, y=TotalReleased, color=Stage, fill=Stage)) +
+    geom_bar(stat="identity")+ 
+    scale_y_continuous(labels = comma) +
+    labs(title = "Hatchery Individuals Released", 
+         subtitle = "by lifestage", 
+         y = "Total Released", 
+         x = "Year") 
+```
+

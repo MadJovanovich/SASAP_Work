@@ -1,0 +1,200 @@
+---
+title: "Alaska Hatcheries: joining releases and returns"
+author: "Madeline Jovanovich"
+date: "3/13/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+    toc: yes
+    toc_depth: 3
+---
+
+
+Pool/sum across years, split across regions for releases and returns, facet by species; additionally have a total all species
+Release and returns faceted by species for each region 
+
+Table: species, region, total release, total return, summed across years = total # of fish releases by species within a given region 
+
+Table: total release and return summed across species and years by region 
+
+Table: shows types of hatchery releases by release type
+
+
+**TO DOs**
+
+*   Were appropriate columns retained from each data set? 
+        -   Should we have two joined data sets: one with all data in addition to the one created below? 
+*   Retain released type, so data can be filtered 
+*   Investigate NA and 0 values 
+*   Investigate suspect values
+*   Clean up plot axes
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = F, warning = F)
+```
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+```
+
+###Reformatting data
+
+Read in data from KNB, aggregate over region, year, and species, join together, and make a long dataframe for easier faceting.
+
+```{r}
+returns <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/knb.92369.1", stringsAsFactors = F)
+#returns <- read.csv("~/R/Hatchery_Returns.csv", stringsAsFactors = F)
+
+returns_species_region <- returns %>%
+    group_by(SASAP.Region, Year, Species) %>%
+    summarise(TotalReturn = sum(Catch))
+
+releases <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Aaf27c17d-3aad-41e4-b1c0-57ac8bb8a022", stringsAsFactors = F)
+colnames(releases)[colnames(releases) == "SASAPRegion"] <- "SASAP.Region"
+colnames(releases)[colnames(releases) == "YearReleased"] <- "Year"
+
+releases_species_region <- releases %>%
+    group_by(SASAP.Region, Year, Species) %>%
+    summarise(TotalReleased = sum(TotalReleased))
+
+
+ret_rel <- left_join(releases_species_region, returns_species_region)
+
+ret_rel_long <- ret_rel %>%
+    gather(key = "ReleaseReturn", value = "NumFish", -SASAP.Region, -Year, -Species)
+```
+```{r results = 'asis', fig.align="center", echo=FALSE}
+kable(ret_rel_long[c(1:3, 20:22, 40:42, 60:62),], caption = "Releases and Returns Data") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+###Plotting by Species
+
+```{r, echo=FALSE}
+ret_rel_long_species <- ret_rel_long %>%
+    group_by(Year, Species, ReleaseReturn) %>%
+    summarize(TotalFish = sum(NumFish, na.rm = T))
+```
+```{r results = 'asis', echo=FALSE}
+kable(ret_rel_long_species[c(1:3, 20:22, 40:42, 60:62),], caption = "Restructured Data for Plotting") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+```{r}
+ggplot(ret_rel_long_species, aes(x = Year, y = TotalFish, color = Species, fill = Species)) + 
+    geom_bar(stat = "identity") +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Statewide Summed Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year")
+```
+```{r}
+ggplot(ret_rel_long_species, aes(x = Year, y = TotalFish, color = Species, fill = Species)) + 
+    geom_bar(stat = "identity") +
+    facet_wrap(~ReleaseReturn, scales = "free", nrow = 2) +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year")
+```
+```{r}
+ggplot(ret_rel_long_species, aes(x = Year, y = TotalFish, color = ReleaseReturn, fill = ReleaseReturn)) + 
+    geom_bar(stat = "identity") +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year") + 
+    theme_minimal() + 
+    facet_wrap(~Species, scales = "free_y", ncol=2)
+```
+
+```{r}
+ggplot(ret_rel_long_species, aes(x = Year, y = TotalFish, color = ReleaseReturn)) + 
+    geom_line(size=0.75) +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year") + 
+    theme_minimal() + 
+    facet_wrap(~Species, scales = "free_y", ncol=2)
+```
+
+###Plotting by Region
+
+```{r}
+ret_rel_long_region <- ret_rel_long %>%
+    group_by(Year, SASAP.Region, ReleaseReturn) %>%
+    summarize(TotalFish = sum(NumFish, na.rm = TRUE))
+```
+```{r results = 'asis', echo=FALSE}
+kable(ret_rel_long_region[c(1:3, 20:22, 40:42),], caption = "Restructured Data for Plotting") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+```{r}
+ggplot(ret_rel_long_region, aes(x = Year, y = TotalFish, color = SASAP.Region, fill = SASAP.Region)) + 
+    geom_bar(stat = "identity") +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year")
+```
+```{r}
+ggplot(ret_rel_long_region, aes(x = Year, y = TotalFish, color = SASAP.Region, fill = SASAP.Region)) + 
+    geom_bar(stat = "identity") +
+    facet_wrap(~ReleaseReturn, scales = "free", nrow = 2) +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year")
+```
+```{r, fig.height=8, fig.width=8}
+ggplot(ret_rel_long_region, aes(x = Year, y = TotalFish, color = ReleaseReturn, fill = ReleaseReturn)) + 
+    geom_bar(stat = "identity") +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year") + 
+    theme_minimal() + 
+    facet_wrap(~SASAP.Region, scales = "free_y", ncol=2)
+```
+```{r, eval=FALSE}
+ggplot(ret_rel, aes(color = ReleaseReturn, fill = ReleaseReturn)) + 
+    geom_line(x = Year, y = TotalReleased) +
+    geom_line(x = Year, y = TotalReturn) +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year") + 
+    theme_minimal() + 
+    facet_wrap(~SASAP.Region, scales = "free_y", ncol=2)
+```
+
+To do on the following plot: 
+
+-   NA values still appearing
+```{r, fig.height=6, fig.width=6}
+#NEED TO REVISIT PLOTTING WITH TWO AXES
+ggplot(ret_rel_long_region, aes(x = Year, y = TotalFish, color = ReleaseReturn)) + 
+    geom_line(size=0.75) +
+    scale_y_continuous(labels = comma) + 
+    labs(title = "Hatchery Releases and Returns", 
+         y = "Total Fish", 
+         x = "Year") + 
+    theme_minimal() + 
+    facet_wrap(~SASAP.Region, scales = "free_y", ncol=2)
+
+```
+```{r, eval=FALSE, include=FALSE}
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  scale_y_continuous(
+    "mpg (US)", 
+    sec.axis = sec_axis(~ . * 1.20, name = "mpg (UK)")
+  )
+```

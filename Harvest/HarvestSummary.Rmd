@@ -1,0 +1,163 @@
+---
+title: "Harvest"
+author: "Madeline Jovanovich"
+date: "6/5/2018"
+output: html_document
+---
+
+Notes: 
+
+* Area = NA likely means the information is confidential due to low amount of processors or permits (see columns "Permit_Count" and "Processor_Count")
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE, echo=FALSE}
+library(leaflet)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(DT)
+library(scales)
+library(knitr)
+library(ggthemes)
+library(RColorBrewer)
+library(colorspace)
+library(scales)
+library(viridis)
+library(DT)
+```
+
+```{r data}
+harvest <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A49a6d2fa-d47a-482c-8a28-d8a9623dc16e", stringsAsFactors = FALSE, na.strings = c("", "NA")) %>%
+  arrange(Area, Gear, Species)
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = No_Fish, fill = Species)) + 
+  geom_bar(stat = "identity") +
+  theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+        legend.text = element_text(size=8), 
+        legend.position = "none", 
+        legend.background = element_rect(fill="gray98"),
+        strip.background = element_rect(fill = "gray98"),
+        panel.grid.major.y = element_line(color="gray93"),
+        #axis.text.x = element_text(angle = 50, hjust = 0.85),
+        plot.title = element_text(margin=margin(0,0,25,0))) +
+  scale_y_continuous(labels=comma, breaks = pretty_breaks(n = 10)) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) 
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = No_Fish, color = Species, fill = Species)) + 
+  geom_bar(stat = "identity") + 
+  theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+        legend.text = element_text(size=8), 
+        legend.position = "none", 
+        legend.background = element_rect(fill="gray98"),
+        strip.background = element_rect(fill = "gray98"),
+        panel.grid.major.y = element_line(color="gray93"),
+        axis.text.x = element_text(angle = 50, hjust = 0.85),
+        plot.title = element_text(margin=margin(0,0,25,0))) +
+  scale_color_manual(values = species_color) + #still need the colors to work correctly 
+  facet_wrap(~Species, scales = "free_y", ncol = 5) + #how do I get the facet to order by decreasing y maximum? 
+  scale_y_continuous(labels=comma, breaks = pretty_breaks(n = 7)) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) 
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = No_Fish, fill = Species)) + 
+  geom_bar(stat = "identity", width = 1) + 
+  facet_wrap(~Area, scales = "free_y", ncol = 6) + 
+  theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+        legend.text = element_text(size=8), 
+        legend.position = "bottom", 
+        legend.background = element_rect(fill="gray98"),
+        strip.background = element_rect(fill = "gray98"),
+        panel.grid.major.y = element_line(color="gray93"),
+        axis.text.x = element_text(angle = 50, hjust = 0.85),
+        plot.title = element_text(margin=margin(0,0,25,0))) +
+  scale_fill_manual(values = species_color)  
+  scale_y_continuous(labels=comma, breaks = pretty_breaks(n = 5)) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) 
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = Permit_Count, fill = Species)) +
+  geom_bar(stat = "identity", width = 1) + 
+  facet_wrap(~Area, scales = "free_y") +
+  theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+        legend.text = element_text(size=8), 
+        legend.position = "bottom", 
+        legend.background = element_rect(fill="gray98"),
+        strip.background = element_rect(fill = "gray98"),
+        panel.grid.major.y = element_line(color="gray93"),
+        axis.text.x = element_text(angle = 50, hjust = 0.85),
+        plot.title = element_text(margin=margin(0,0,25,0))) +
+  scale_fill_manual(values = species_color) + #still need the colors to work correctly  
+  scale_y_continuous(labels=comma, breaks = pretty_breaks(n = 5)) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10))
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = Permit_Count, color = Species, fill = Species)) +
+  geom_bar(stat = "identity") + 
+  facet_wrap(~Gear, scales = "free_y") +
+  theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+        legend.text = element_text(size=8), 
+        legend.position = "bottom", 
+        legend.background = element_rect(fill="gray98"),
+        strip.background = element_rect(fill = "gray98"),
+        panel.grid.major.y = element_line(color="gray93"),
+        axis.text.x = element_text(angle = 50, hjust = 0.85),
+        plot.title = element_text(margin=margin(0,0,25,0))) +
+  scale_fill_manual(values = species_color) + #still need the colors to work correctly  
+  scale_y_continuous(labels=comma, breaks = pretty_breaks(n = 5)) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10))
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = Permit_Count, color = Gear, fill = Gear)) +
+  geom_bar(stat = "identity", position = "stack") + 
+  facet_wrap(~Area, scales = "free_y") + 
+  theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+        legend.text = element_text(size=8), 
+        legend.position = "bottom", 
+        legend.background = element_rect(fill="gray98"),
+        strip.background = element_rect(fill = "gray98"),
+        panel.grid.major.y = element_line(color="gray93"),
+        axis.text.x = element_text(angle = 50, hjust = 0.85),
+        plot.title = element_text(margin=margin(0,0,25,0))) +
+  #scale_fill_manual(values = species_color) + #need to make a color palette for gear
+  scale_y_continuous(labels=comma, breaks = pretty_breaks(n = 5)) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10))
+```
+
+```{r}
+ggplot(harvest, aes(x = Year, y = Vessel_Count, color = Gear, fill = Gear)) + 
+  geom_bar(stat = "identity", position = "stack") + 
+  facet_wrap(~Area, scales = "free_y") +
+  theme_hc() +
+    theme(plot.background = element_rect(fill="gray98"),
+        legend.text = element_text(size=8), 
+        legend.position = "bottom", 
+        legend.background = element_rect(fill="gray98"),
+        strip.background = element_rect(fill = "gray98"),
+        panel.grid.major.y = element_line(color="gray93"),
+        axis.text.x = element_text(angle = 50, hjust = 0.85),
+        plot.title = element_text(margin=margin(0,0,25,0))) +
+  #scale_fill_manual(values = species_color) + #need to make a color palette for vessel types 
+  scale_y_continuous(labels=comma, breaks = pretty_breaks(n = 5)) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10))
+```
+
+#Harvest by Area 
+
+

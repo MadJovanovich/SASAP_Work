@@ -567,6 +567,25 @@ ggplot(data = percents, aes(x = sampleYear, fill=factor(metUnmetExceeded), y=(..
   scale_fill_brewer(palette = "YlGnBu", direction = -1)
 #We're getting there with the colors
 #Might need to change the aspect ratio, make everything a bit more tight/closer together
+
+coord_polar("y", start=0)\
+```
+
+```{r, fig.width=5, fig.height=5}
+ggplot(data = percents, aes(x = "", fill=factor(metUnmetExceeded), y=(..count..))) + 
+    geom_bar(width = 1) +
+    labs(title = "Annual Goal Achievement, Statewide") +
+    scale_y_continuous(labels=percent) + 
+    guides(fill=guide_legend(title="")) + 
+    theme_hc() +
+  scale_fill_brewer(palette = "YlGnBu", direction = -1) +
+  coord_polar("y") +
+  theme(axis.text.x=element_blank())
+
+
+
+
+
 ```
 
 ```{r Goal Achievement by Region, fig.align="center"}
@@ -649,6 +668,7 @@ ggplot() +
     geom_line(data = BBsockeye_catch, aes(x = Year, y = NumFish_SumbyGear, color = "Bu")) +
         scale_y_continuous(sec.axis = sec_axis(~.,name = "Catch"), labels = comma)
 ```
+
 ```{r Bristol Bay escapement over time by species}
 BB_esc <- EG_results %>%
   filter(SASAP.Region == "Bristol Bay") %>%
@@ -656,6 +676,7 @@ BB_esc <- EG_results %>%
   summarize(sum(annualCount))
 colnames(BB_esc) <- c("Year", "Species", "SumAnnualCount")
 ```
+
 ```{r Revisiting original escapement plotting ideas - Bristol Bay}
 #Too add in a line of the goals, we would need to visualize by LocationID, not by entire region
 
@@ -679,7 +700,54 @@ ggplot(data = BB_esc, aes(x = Year, y = SumAnnualCount, color = Species)) +
             panel.grid.major.x = element_line(color="gray93"),
             axis.line = element_line(color="gray80")) +
       scale_color_manual(values = species_color)
+
 ```
+
+```{r Kvichak}
+Kvichak <- escapement_goals %>%
+  filter(LocationID == "Kvichak River")
+
+ggplot(data = Kvichak, aes(x = sampleYear, y = annualCount, color = Species)) + 
+    geom_line(size = 1) +
+      expand_limits(y=c(0, 1000000)) +
+      scale_y_continuous(labels=comma) +
+      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+      labs(x = "Year", 
+           y = "Annual Escapement", 
+           title = "Kvichak River Sockeye") + 
+      guides(fill=guide_legend(title="Species")) + 
+      theme_hc() +
+       theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85),
+          plot.title = element_text(margin=margin(0,0,25,0))) +
+      scale_color_manual(values = species_color) + 
+geom_hline(yintercept = 2e+06)
+
+ggplot(Coho, aes(x=Year, y=NumFish, color=DataType)) +
+    geom_line(size = 1) + 
+    labs (title = "Kuskokwim River Coho",
+          subtitle = "Harvest and Escapement", 
+          x = "Year", 
+          y = "Number of Fish") + 
+    scale_y_continuous(labels = comma, expand = c(0, 0), limits = c(0, max(Coho$NumFish)), 
+                       breaks = pretty_breaks(n = 5)) +
+    scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+    guides(color=guide_legend(title="")) + 
+    theme_hc() +
+        theme(plot.background = element_rect(fill="gray98"),
+          legend.text = element_text(size=8), 
+          legend.position = "right", 
+          legend.background = element_rect(fill="gray98"),
+          strip.background = element_rect(fill = "gray98"),
+          panel.grid.major.y = element_line(color="gray93"),
+          axis.text.x = element_text(angle = 50, hjust = 0.85))
+```
+
 ```{r Bristol Bay kable of data coverage}
 BBesc_summary1 <- BB_esc %>%
   group_by(Species) %>%

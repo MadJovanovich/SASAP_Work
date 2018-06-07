@@ -1,0 +1,370 @@
+---
+title: "Hatchery Visualizations"
+author: "Madeline Jovanovich"
+date: "3/13/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Work in progress
+
+When plotting y axis, make in millions (fraction more intrepretable)
+Draft email to Casey Campbell 
+
+QA releases data set against enhacement report 
+
+```{r, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(ggthemes)
+library(RColorBrewer)
+require(scales)
+
+```
+```{r}
+returns <- read.csv('~/R/Hatchery_Returns.csv', stringsAsFactors = FALSE)
+returnsby_gear <- read.csv('~/R/Hatchery_Returns_byGearType.csv', stringsAsFactors = FALSE)
+returnsby_year <- read.csv('~/R/Hatchery_Returns_byYear.csv', stringsAsFactors = FALSE)
+
+releases <- read.csv('~/R/Hatchery_ReleasesAK.csv', stringsAsFactors = FALSE)
+```
+###Returns by Year
+
+First, let's look at what we expect to see in our data.
+```{r, include=FALSE, fig.align="center", warning=FALSE}
+str(returnsby_year)
+range(returnsby_year$Year)
+range(returnsby_year$TotalCatch)
+unique(returnsby_year$Species)
+
+rby_sum <- returnsby_year %>%
+    group_by(Region) %>% 
+    select(Year, TotalCatch) %>% 
+    summarise_all(funs(min = min,
+                     max = max))
+num_hatcheries <- returnsby_year %>%
+    group_by(Region) %>% 
+    select(Hatchery, Project, Species) %>% 
+    summarise_all(funs(n_distinct))
+
+dim(rby_sum) 
+dim(num_hatcheries) 
+summary <- left_join(rby_sum, num_hatcheries)
+summary <- summary[,c(1,2,4,3,5,6,7,8)]
+
+colnames(summary) <- (c("Region", "Year min", "Year max", "Min return", "Max return", "Hatchery", "Project", "Species"))
+```
+```{r, echo=FALSE}
+kable(summary, caption = "Summary of Hatchery Returns by Year")
+```
+
+
+These below plots needs a bit more work:
+
+*   column: position="dodge", but I still need to space out the x axis to see all of the columns
+*   adding scale_y_log10() helps to relatively compare across regions, but fails to give a sense of relative magnitude differences between species and regions
+
+Catches of Hatchery Individuals by Region
+
+**Peter: which plot do you prefer?**
+```{r, echo=FALSE, fig.align="center", warning=FALSE}
+#p + scale_x_continuous(labels = comma)
+
+year_sum <- returnsby_year %>% 
+    group_by(Year, Region, Species, Hatchery) %>%
+    summarise(SumTotalCatch = sum(TotalCatch)) %>%
+    arrange(Region, Species, Year)
+
+ggplot(year_sum, aes(x=Year, y=SumTotalCatch, color=Species, fill=Species)) +
+    geom_col(position = "dodge") +
+    scale_fill_brewer(palette = "RdYlGn") + 
+    scale_color_brewer(palette = "RdYlGn") + 
+    scale_y_continuous(labels = comma) +
+    labs(title="Returns of Hatchery Individuals by Region",
+         y = "Sum of Total Catch") +
+    theme(legend.position="bottom") +
+    facet_wrap(~Region, scale="free_y")
+
+ggplot(year_sum, aes(x=Year, y=SumTotalCatch, color=Species, fill=Species)) +
+    geom_bar(stat="identity") +
+    scale_fill_brewer(palette = "RdYlGn") + 
+    scale_color_brewer(palette = "RdYlGn") + 
+    scale_y_continuous(labels = comma) +
+    labs(title="Returns of Hatchery Individuals by Region",
+         y = "Sum of Total Catch") +
+    theme(legend.position="bottom") +
+    facet_wrap(~Region, scale="free_y")
+
+PWS_yearsum <- year_sum %>%
+    filter(grepl("Prince William Sound", Region))
+
+ggplot(PWS_yearsum, aes(x=Year, y=SumTotalCatch, color=Species, fill=Species)) +
+    geom_bar(stat="identity") +
+    scale_fill_brewer(palette = "RdYlGn") + 
+    scale_color_brewer(palette = "RdYlGn") + 
+    scale_y_continuous(labels = comma) +
+    labs(title="Returns of Hatchery Individuals in Prince William Sound Region",
+         y = "Sum of Total Catch") +
+    theme(legend.position="bottom") 
+```
+
+Returns by Species
+```{r, echo=FALSE, fig.align="center", warning=FALSE}
+ggplot(year_sum, aes(x=Year, y=SumTotalCatch, color=Region, fill=Region)) + 
+    geom_bar(stat="identity") + 
+    scale_y_continuous(labels = comma) +
+    scale_fill_brewer(palette = "Spectral") + 
+    scale_color_brewer(palette = "Spectral") +
+    labs(title = "Returns of Hatchery Individuals by Species", 
+         y = "Sum of Total Catch") +
+    theme(legend.position="bottom") +
+    facet_wrap(~Species, scales = "free_y")
+    
+ggplot(year_sum, aes(x=Year, y=SumTotalCatch, color=Region, fill=Region)) + 
+    geom_col(position = "dodge") +
+    scale_y_continuous(labels = comma) +
+    scale_fill_brewer(palette = "Spectral") + 
+    scale_color_brewer(palette = "Spectral") +
+    labs(title = "Returns of Hatchery Individuals by Species", 
+         y = "Sum of Total Catch") +
+    theme(legend.position="bottom") +
+    facet_wrap(~Species, scales = "free_y")   
+
+#Something to play around with tonight
+ggplot(year_sum, aes(x=Year, y=SumTotalCatch, color=Region, fill=Region)) + 
+    geom_col(position = "dodge") +
+    scale_y_continuous(labels = comma) +
+    scale_fill_hue(c=50, l=45) +
+    scale_color_hue(c=50, l=45) +
+    labs(title = "Returns of Hatchery Individuals by Species", 
+         y = "Sum of Total Catch") +
+    theme(legend.position="bottom") +
+    facet_wrap(~Species, scales = "free_y")
+    
+```
+
+```{r, fig.align="center", warning=FALSE}
+ggplot(returnsby_gear, aes(x=Year, y=Catch)) + 
+    geom_bar(aes(color=GearType, fill=GearType),stat="identity") + 
+    ggtitle("Hatchery Returns by Fishery") +  
+    scale_y_continuous(labels = comma) +
+    theme(legend.position="bottom") +
+    guides(color = guide_legend(nrow = 1)) +
+    facet_wrap(~Region, ncol=3, scales = "free_y")
+
+ggplot(returnsby_gear, aes(x=Year, y=Catch)) + 
+    geom_bar(aes(color=GearType, fill=GearType),stat="identity") + 
+    ggtitle("Hatchery Returns by Fishery") +  
+    scale_y_continuous(labels = comma) +
+    theme(legend.position="bottom") +
+    guides(color = guide_legend(nrow = 1)) +
+    facet_wrap(~Species, ncol=3, scales="free_y")
+
+PWS_gear <- returnsby_gear %>%
+    filter(grepl("Prince William Sound", Region))
+
+ggplot(PWS_gear, aes(x=Year, y=Catch)) + 
+    geom_bar(aes(color=Species, fill=Species),stat="identity") + 
+    ggtitle("Hatchery Returns by Fishery") +  
+    scale_y_continuous(labels = comma) +
+    theme(legend.position="bottom") +
+    guides(color = guide_legend(nrow = 1)) +
+    facet_wrap(~GearType, ncol=3, scales="free_y")
+```
+
+Returns by Hatchery 
+```{r, echo=FALSE, fig.align="center", warning=FALSE}
+#require(scales) # for removing scientific notation
+
+ggplot(returnsby_year, aes(x=Hatchery, y=TotalCatch)) + 
+    geom_bar(aes(color=Species, fill=Species),stat="identity") + 
+    labs(title="Returns of Individuals by Hatchery", subtitle="all species") +
+    scale_x_discrete(expand = c(0,0)) +
+    theme_gray(base_size = 8) + 
+    theme(legend.position = "right", axis.text.x = element_text(angle = 50, hjust = 1)) 
+
+
+ggplot(returnsby_year, aes(x=Hatchery, y=TotalCatch)) + 
+    geom_bar(aes(color=Region, fill=Region), stat="identity") +
+    labs(title="Returns of Individuals by Hatchery", subtitle="all species") +
+    theme_gray(base_size = 8) + 
+    theme(legend.position = "right", axis.text.x = element_text(angle = 50, hjust = 1)) 
+
+
+ggplot(returnsby_year, aes(x=Hatchery, y=TotalCatch)) + 
+    geom_bar(aes(color=Region, fill=Region),stat="identity") + 
+    scale_x_discrete() +
+    scale_y_continuous(labels = comma) +
+    labs(title="Returns of Individuals by Hatchery", 
+         subtitle="once again, need to figure out how to expand the y axis/height of these one-column plot facets") + 
+    theme(legend.position = "right", axis.text.x = element_text(angle = 50, hjust = 1)) + 
+    facet_wrap(~Region, ncol = 1, scales = "free_y")
+```
+
+**Still need to figure out how to expand x axis to make this more legible**
+Is something like this even useful? Is there a better way to show relative hatchery contributions? 
+
+```{r, echo=FALSE, fig.align="center", warning=FALSE}
+ggplot(returnsby_gear, aes(x=Year)) + 
+    geom_freqpoly(aes(color=Region), position="identity", bins=40) + 
+    ggtitle("Catches of Hatchery Individuals by Region")
+```
+**Is this an appropriate plot? Are frequency plots useful given that the y axis is not explicit/doesn't show the actual data?** I feel this plot is somewhat useful, because it allows comparison of relative returns by region, allowing us to look at the magnitude of difference rather than the actual numbers (which when many are small and some are large, they can be difficult to visualize... but now I'm recalling there is some stats way to deal with that, something other than log10()?)
+
+
+**Is there a better way to show that most hatcheries have similar returns? Is there a color palette that can handle 56 values, or a way to get a continuous scale to fit to discrete data?** How could I make a legend with the max 3 and min 3 contributing hatcheries to this plot? 
+
+
+
+
+
+
+
+
+
+
+###Returns by Gear Type
+Many of the following plots should have used a different df
+Why can't I get the range of the Catch column? Is the y axis accurately depicting the data? 
+
+**Need to make a table that shows the gear types used in harvest in each region**
+
+*   Gear types by region 
+*   Species by gear type
+*   Catches by gear type
+*   Range of years by gear type
+*   Hatcheries by gear type? 
+
+```{r, fig.align="center", warning=FALSE, eval=FALSE, include=FALSE}
+
+str(returnsby_gear)
+range(returnsby_gear$Year)
+range(returnsby_gear$Catch)
+gear_tbl <- tbl_df(returnsby_gear)
+summary(returnsby_gear)
+
+rbg_sum <- returnsby_gear %>%
+    group_by(Region) %>% 
+    select(Year, Catch) %>% 
+    summarise_all(funs(min = min,
+                     max = max))
+
+gear_sum <- returnsby_gear %>%
+    group_by(Region) %>% 
+    select(GearType, Species) %>% 
+    summarize()
+
+dim(rby_sum) 
+dim(num_hatcheries) 
+summary <- left_join(rby_sum, num_hatcheries)
+summary <- summary[,c(1,2,4,3,5,6,7,8)]
+
+colnames(summary) <- (c("Region", "Year min", "Year max", "Min return", "Max return", "Hatchery", "Project", "Species"))
+```
+```{r, echo=FALSE, eval=FALSE}
+kable(summary)
+```
+
+**Why can't I get this y axis to expand? And why do I still get the warning of 37414 lines removed (after running na.omit)?**
+```{r, fig_width: 4, fig_height: 6, fig.align="center", warning=FALSE}
+ggplot(returnsby_gear, aes(x=Region, y=Catch)) + 
+    geom_col(aes(color=Species, fill=Species)) +
+    scale_y_continuous(limits=c(0,5000)) +
+    ggtitle("Catches of Hatchery Individuals by Region") +
+    theme(axis.text.x = element_text(angle = 50, hjust = 1)) + 
+    facet_wrap(~Species, ncol=1)
+```
+
+
+```{r, eval=FALSE}
+##Proportion of brood+CR/total return over time 
+bt_cr <- returnsby_gear %>% 
+    group_by(Year, Region, Hatchery, Species, GearType) %>%
+    filter(BroodTake, CostRecovery) %>%
+    summarize(sum = sum("Catch", na.rm=TRUE)) 
+colnames(bt_cr) <- c("Year", "Region", "Hatchery", "Species", "BroodTake_CostRec")
+ret_proportion <- left_join(bt_cr, returnsby_gear)
+
+x %>% 
+  group_by(Category) %>% 
+  summarise(Frequency = sum(Frequency))
+
+br_cr <- returnsby_gear %>%
+    group_by(GearType) %>%
+    filter(grepl(c("BroodTake", "CostRecovery"))) 
+#Why can't I recall how to do this correctly? 
+
+returnsby_gear <- returnsby_gear %>%
+  group_by(Year, Region, Hatchery, Species, GearType, Catch) %>%
+  summarise (n = n()) %>%
+  mutate(freq = n / sum(n))
+
+rbg_sum <- returnsby_gear %>%
+    group_by(Region) %>% 
+    select(Year, Catch) %>% 
+    summarise_all(funs(min = min,
+                     max = max))
+
+summary <- left_join(rby_sum, num_hatcheries)
+
+
+
+
+#Send Toby plots by fishery 
+#Take a look at catch data 
+#What % of all releases and catches are by what species and which region 
+#i.e. make tables of the data within the plots 
+
+
+#Returns by fishery, returns by species, returns by region 
+#Visual cartoon data process 
+
+##Need to make a table that sums total catch by year, species, and hatchery (remove project); year, species, region
+#What can we say about the major and minor hatcheries? Explore this to show the range of both releases and returns; compare the magnitude of the release in a given hatchery to it's return
+#Why do major spikes in returns happen? Were there large releases in years previous? Did the hatcheries that reported large returns also report large releases? 
+```
+
+
+###Releases 
+
+```{r}
+releases <- na.omit(releases)
+rel <- subset(releases, Species!="Total")
+```
+
+```{r, warning=FALSE}
+ggplot(rel, aes(x=Year, y=ReleasedInd, color=ReportingArea)) + 
+    geom_point() + 
+    geom_line() +
+    facet_wrap(~Species)
+
+ggplot(rel, aes(x=Year, y=ReleasedInd, color=Species)) + 
+    geom_point() + 
+    geom_line() +
+    facet_wrap(~ReportingArea)
+
+ggplot(rel, aes(x=Year, y=ReleasedInd, color=Species, fill=Species)) + 
+    geom_col() + 
+    facet_wrap(~ReportingArea)
+
+ggplot(rel, aes(x=Year, y=ReleasedInd, color)) + 
+    geom_bar(aes(color=Species, fill=Species),stat="identity") + 
+    labs(title="Releases of Individuals") +
+    scale_y_continuous(labels = comma) +
+    theme_gray(base_size = 8) + 
+    theme(legend.position = "bottom") + 
+    guides(color = guide_legend(nrow = 1)) +
+    facet_wrap(~ReportingArea, scales = "free_y")
+```
+
+**Need to remove "Total", and possibly Steelhead (since they're not included in returns)
+
+

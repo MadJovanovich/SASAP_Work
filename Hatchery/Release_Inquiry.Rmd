@@ -1,0 +1,73 @@
+---
+title: "Hatchery Release Inquiry"
+author: "Madeline Jovanovich"
+date: "3/12/2018"
+output: 
+  html_document: 
+    highlight: tango
+    theme: paper
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Hatchery releases:
+
+I have found that the releases I previously plotted does not include a PWS region, but rather a Central region = PWS and other regions are not broken out of their broad-scale groupings that are designated by ADF&G.
+
+```{r}
+NPAFC_releases <- read.csv(file='~/Hatchery/Hatchery_ReleasesAK.csv')
+unique(NPAFC_releases$ReportingArea)
+```
+
+So Prince William Sound can only be looked at as part of the Central Region. Let's take a look at this other file that was found in [Drive](https://drive.google.com/open?id=1kGnGS2cDp-bVHhe92TrjRNPKKbxYcTpU).
+
+```{r}
+ADFG_releases <- read.csv("~/Hatchery/Hatchery_Releases_geo.csv")
+```
+
+```{r, message=FALSE}
+library(dplyr)
+colnames(ADFG_releases) <- c('ReleaseYear', 'ReleaseTotal', 'Agency', 'SiteDistrict', 'SiteRegion', 'Species', 
+                              'FacilityQuadrant', 'Facility', 'Flag', 'StateProv', 'Country')
+AKrel <- ADFG_releases %>%
+    filter(StateProv == "Alaska")
+
+library(knitr)
+kable(AKrel[1:8,])
+```
+
+We can see that there are many details in this dataset
+
+*   96 Reporting Agencies
+*   1810 Facilities
+*   13 Facility Quandrants (that may line up to regions, or portions of regions)
+
+```{r}
+unique(AKrel$Agency)
+unique(AKrel$Facility)
+unique(AKrel$FacilityQuadrant)
+```
+
+In summary, we have two files:
+
+1. NPAFC-reported hatchery releases, only have generalized Central region **without PWS broken out**
+2. ADF&G-reported hatchery releases, with facility and quandrant info, **may require manually pairing facilities to regions**
+
+So we can look in to using this file, I just need information on it's origin (I believe it is from Rich, May 2017) and any associated notes. 
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+Central_releases <- NPAFC_releases %>%
+    filter(ReportingArea == "Central") %>%
+    arrange(Year)
+ggplot(Central_releases, aes(x=Year, y=Release_1000s, color=Species)) +
+    geom_point() + 
+    ggtitle("Central Region Hatchery Releases", subtitle = "NPAFC data") + 
+    facet_wrap(~Species)
+ggplot(AKrel, aes(x=ReleaseYear, y=ReleaseTotal, color=Species)) + 
+    geom_point() + 
+    ggtitle("Hatchery Releases from Other File", subtitle = "from other file, assume to be obtained from ADF&G") +
+    facet_wrap(~Species)
+```
