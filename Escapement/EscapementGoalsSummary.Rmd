@@ -9,9 +9,6 @@ For some unknown reason I started added harvest to this rmd, but that was a mist
 1. escapement with goals 
 2. harvest
 3. hatchery
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE) #do I need this code chunk? 
-```
 
 ```{r libraries, message=FALSE, warning=FALSE, echo=FALSE}
 library(leaflet)
@@ -35,39 +32,97 @@ escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = F
   arrange(SASAP.Region, LocationID, Species)
 ```
 
-#Mad Themes for Plotting
-```{r mad_line}
-#how do I get this to work? 
-mad_line <- theme_hc %>%
-  theme(plot.background = element_rect(fill="gray98"),
-          legend.text = element_text(size=8), 
-          legend.position = "none", 
-          legend.background = element_rect(fill="gray98"),
-          strip.background = element_rect(fill = "gray98"),
-          panel.grid.major.y = element_line(color="gray93"),
-          axis.text.x = element_text(angle = 50, hjust = 0.85),
-          plot.title = element_text(margin=margin(0,0,25,0)))
+```{r Changing_Region_name_for_simplicity}
+escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Pen. and Aleutians"
 
-ggplot(data = Kvichak, aes(x = sampleYear, y = annualCount, color = Species)) + 
-    geom_line(size = 1) +
-      expand_limits(y=c(0, 1000000)) +
-      scale_y_continuous(labels=comma) +
-      scale_x_continuous(breaks = pretty_breaks(n = 10)) +
-      labs(x = "Year", 
-           y = "Annual Escapement", 
-           title = "Kvichak River Sockeye") + 
-      guides(fill=guide_legend(title="Species")) + 
-      theme_hc() +
-       theme(plot.background = element_rect(fill="gray98"),
-          legend.text = element_text(size=8), 
-          legend.position = "none", 
-          legend.background = element_rect(fill="gray98"),
-          strip.background = element_rect(fill = "gray98"),
-          panel.grid.major.y = element_line(color="gray93"),
-          axis.text.x = element_text(angle = 50, hjust = 0.85),
-          plot.title = element_text(margin=margin(0,0,25,0))) +
-      scale_color_manual(values = species_color) + 
-geom_hline(yintercept = 2e+06)
+escapement_goals$types[escapement_goals$types == "inRiver"] <- "In-River"
+
+escapement_goals$types[escapement_goals$types == "agreement"] <- "Agreement"
+```
+
+
+```{r Color Schemes, echo=FALSE, include=FALSE}
+species_color <- c(chinook = "#33A02C", coho = "#A6CEE3", chum = "#1F78B4", sockeye = "#E31A1C", pink = "#FB9A99")
+show_col(species_color)
+```
+
+####Arctic Region
+
+Show there are no goals in the Arctic by adding a region to the data set: this will be displayed in the table and plot that shows goal by region
+```{r Arctic Region, warning=FALSE}
+Arctic <- data.frame("Arctic")
+colnames(Arctic) <- "SASAP.Region"
+```
+
+####Year QA
+
+```{r QA Data - Year Ranges and Complete Data}
+YearQA <- escapement_goals %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
+
+#Bristol Bay is the only region that includes 2017, so let's remove it (causing issues anyways)
+
+escapement_goals_QAed <- escapement_goals %>%
+  filter(sampleYear < 2017) #This is done to ignore BB 2017 data, which is incomplete as of 5/2/18, but still included in cumulative escapement data
+
+escapement_goals_QAedkable <- escapement_goals_QAed %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
+#Print a kable to show year ranges, and make note of this exclusion
+
+eg_summary <- bind_rows(Arctic, escapement_goals_QAedkable) %>%
+  arrange(SASAP.Region)
+```
+
+```{r kable showing Orginial data}
+#Should make these tables include a list of goal types by region
+kable(YearQA, caption = "Ranges of Years in Original Dataset")
+```
+
+**Missing most recent 2 years: notice that not all regions have the same max year. Should I only evaluate thorough 2014? Seems rather silly given that would exclude all of Bristol Bay's most recent large runs, as well as the past couple Kusko years of slight improvement.** 
+
+```{r kable showing Year QA}
+kable(escapement_goals_QAedkable, caption = "Ranges of Years after removing incomplete 2017 data")
+```
+
+#### Establishing proportions of achievement
+
+This may need some work
+```{r Establishing Proportions of Achievement}
+#Need to create a kable of this
+#Do I really want to remove NA values? If they are included in the df, I can show locations of annual counts with no goals
+#that way, EG_results would retains NAs, percents would omit them
+
+EG_results <- escapement_goals_QAed %>%
+  filter(!is.na(MetLower) | !is.na(MetUpper)) %>%
+  arrange(SASAP.Region, LocationID)
+
+sumna <- function(x) {
+    sum(x, na.rm = TRUE)
+}
+
+#Selecting a lot of columns here, but may eventually need to make a separate df: one with only a few pertinent columns for "percents", another with more data
+percents <- EG_results %>%
+    #select(SASAP.Region, LocationID, Species, sampleYear, MetLower, MetUpper) %>%
+    select(SASAP.Region, LocationID, Species, sampleYear, annualCount, types, MetLower, MetUpper) %>%
+    group_by(sampleYear, SASAP.Region, types, LocationID, Species) %>%
+    summarise(countMetLower = sumna(MetLower), 
+              countMetUpper = sumna(MetUpper), 
+              notMetUpper = sumna(!MetUpper), 
+              notMetLower = sumna(!MetLower),
+              percentMetUpper = (sumna(MetUpper)/(sumna(MetUpper) + sumna(!MetUpper))),
+              percentMetLower = (sumna(MetLower)/(sumna(MetLower) + sumna(!MetLower)))) %>%
+    arrange(SASAP.Region, LocationID)
+
+percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
+
+plottingdf <- bind_rows(percents, Arctic) %>%
+  arrange(SASAP.Region, LocationID)
 ```
 
 #Summary Tables
@@ -221,6 +276,9 @@ Workflow: complete this task for one region, then adapt it to each region
 
 
 ```{r}
+Kvichak <- escapement_goals %>%
+  filter(LocationID == "Kvichak River")
+
 ggplot(data = Kvichak, aes(x = sampleYear, y = annualCount, color = Species)) + 
     geom_line(size = 1) +
       expand_limits(y=c(0, 1000000)) +
@@ -242,39 +300,6 @@ ggplot(data = Kvichak, aes(x = sampleYear, y = annualCount, color = Species)) +
       scale_color_manual(values = species_color) + 
 geom_hline(yintercept = 2e+06)
 ```
-
-
-```{r}
-ggplot(harvest, aes(x = Year, y = No_Fish, fill = Species)) + 
-  geom_bar(stat = "identity") + 
-  facet_wrap(~Area, scales = "free_y")
-```
-
-```{r}
-ggplot(harvest, aes(x = Year, y = No_Fish, fill = Area)) + 
-  geom_bar(stat = "identity") + 
-  theme(legend.position = "bottom") +
-  facet_wrap(~Species, scales = "free_y")
-```
-
-
-```{r}
-ggplot(harvest, aes(x = Year, y = Net_Pounds, fill = Species)) + 
-    geom_bar(stat = "identity") + 
-    facet_wrap(~Area, scales = "free_y")
-```
-
-
-```{r}
-ggplot(harvest, aes(x = Year, y = Permit_Count))
-```
-
-
-```{r}
-ggplot(harvest, aes(x = Year, y = Vessel_Count))
-```
-
-##Pairing Harvest and Escapement 
 
 ##Alaska Peninsula and Aleutian Islands
 

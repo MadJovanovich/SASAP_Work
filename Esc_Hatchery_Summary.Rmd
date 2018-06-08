@@ -1,0 +1,135 @@
+---
+title: "Escapement and Hatchery Data"
+author: "Madeline Jovanovich"
+date: "6/8/2018"
+output: html_document
+---
+
+```{r libraries, message=FALSE, warning=FALSE, echo=FALSE}
+library(leaflet)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(DT)
+library(scales)
+library(knitr)
+library(ggthemes)
+library(RColorBrewer)
+library(colorspace)
+library(scales)
+library(viridis)
+library(DT)
+```
+
+#Escapement 
+
+Annual escapement data and escapement goals
+
+```{r}
+escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE) %>%
+  arrange(SASAP.Region, LocationID, Species)
+```
+
+How Madeline reformatted the data for her WDAFS talk: 
+```{r, warning = FALSE}
+escapement_goals$SASAP.Region[escapement_goals$SASAP.Region == "Alaska Peninsula and Aleutian Islands"] <- "AK Pen. and Aleutians"
+
+escapement_goals$types[escapement_goals$types == "inRiver"] <- "In-River"
+
+escapement_goals$types[escapement_goals$types == "agreement"] <- "Agreement"
+
+species_color <- c(chinook = "#33A02C", coho = "#A6CEE3", chum = "#1F78B4", sockeye = "#E31A1C", pink = "#FB9A99")
+
+Arctic <- data.frame("Arctic")
+colnames(Arctic) <- "SASAP.Region"
+
+YearQA <- escapement_goals %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
+
+#Bristol Bay is the only region that includes 2017, so let's remove it (causing issues anyways)
+
+escapement_goals_QAed <- escapement_goals %>%
+  filter(sampleYear < 2017) #This is done to ignore BB 2017 data, which is incomplete as of 5/2/18, but still included in cumulative escapement data
+
+escapement_goals_QAedkable <- escapement_goals_QAed %>%
+  select(SASAP.Region, sampleYear) %>%
+  group_by(SASAP.Region) %>%
+  summarize(min(sampleYear),
+            max(sampleYear))
+
+#Print a kable to show year ranges, and make note of this exclusion
+
+eg_summary <- bind_rows(Arctic, escapement_goals_QAedkable) %>%
+  arrange(SASAP.Region)
+
+kable(escapement_goals_QAedkable, caption = "Ranges of Years after removing incomplete 2017 data")
+
+EG_results <- escapement_goals_QAed %>%
+  filter(!is.na(MetLower) | !is.na(MetUpper)) %>%
+  arrange(SASAP.Region, LocationID)
+
+sumna <- function(x) {
+    sum(x, na.rm = TRUE)
+}
+
+#Selecting a lot of columns here, but may eventually need to make a separate df: one with only a few pertinent columns for "percents", another with more data
+percents <- EG_results %>%
+    #select(SASAP.Region, LocationID, Species, sampleYear, MetLower, MetUpper) %>%
+    select(SASAP.Region, LocationID, Species, sampleYear, annualCount, types, MetLower, MetUpper) %>%
+    group_by(sampleYear, SASAP.Region, types, LocationID, Species) %>%
+    summarise(countMetLower = sumna(MetLower), 
+              countMetUpper = sumna(MetUpper), 
+              notMetUpper = sumna(!MetUpper), 
+              notMetLower = sumna(!MetLower),
+              percentMetUpper = (sumna(MetUpper)/(sumna(MetUpper) + sumna(!MetUpper))),
+              percentMetLower = (sumna(MetLower)/(sumna(MetLower) + sumna(!MetLower)))) %>%
+    arrange(SASAP.Region, LocationID)
+
+percents$metUnmetExceeded = ifelse(percents$countMetUpper > 0, "Exceeded", ifelse(percents$countMetLower > 0, "Met", "Unmet"))
+
+plottingdf <- bind_rows(percents, Arctic) %>%
+  arrange(SASAP.Region, LocationID)
+```
+
+#Hatchery
+
+
+[Google Drive folder that includes reformatted hatchery data](https://drive.google.com/drive/folders/0B-T8urJ4Tv4fRzZ2RlpWcUtKSFU)
+
+```{r, echo=FALSE}
+returns <- read.csv('~/R/Hatchery_Returns.csv', stringsAsFactors = FALSE)
+returnsby_gear <- read.csv('~/R/Hatchery_Returns_byGearType.csv', stringsAsFactors = FALSE)
+returnsby_year <- read.csv('~/R/Hatchery_Returns_byYear.csv', stringsAsFactors = FALSE)
+
+releases <- read.csv('~/R/Hatchery_ReleasesAK.csv', stringsAsFactors = FALSE)
+```
+
+```{r, include=FALSE, fig.align="center", warning=FALSE}
+str(returnsby_year)
+range(returnsby_year$Year)
+range(returnsby_year$TotalCatch)
+unique(returnsby_year$Species)
+
+rby_sum <- returnsby_year %>%
+    group_by(Region) %>% 
+    select(Year, TotalCatch) %>% 
+    summarise_all(funs(min = min,
+                     max = max))
+num_hatcheries <- returnsby_year %>%
+    group_by(Region) %>% 
+    select(Hatchery, Project, Species) %>% 
+    summarise_all(funs(n_distinct))
+
+dim(rby_sum) 
+dim(num_hatcheries) 
+summary <- left_join(rby_sum, num_hatcheries)
+summary <- summary[,c(1,2,4,3,5,6,7,8)]
+
+colnames(summary) <- (c("Region", "Year min", "Year max", "Min return", "Max return", "Hatchery", "Project", "Species"))
+```
+```{r, echo=FALSE}
+kable(summary, caption = "Summary of Hatchery Returns by Year")
+```
