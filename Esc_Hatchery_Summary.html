@@ -128,6 +128,8 @@ $(document).ready(function () {
 <div id="escapement" class="section level1">
 <h1>Escapement</h1>
 <p>Annual escapement data and escapement goals</p>
+<p>The path to this file is from my local drive, but you cann access it via the shared SASAP Google Drive. This was writted by running GoalEvaluation.Rmd, which is included on <a href="https://github.nceas.ucsb.edu/NCEAS/sasap-data/blob/master/data-processing/Escapement/GoalEvaluation.Rmd">GitHub here</a>.</p>
+<p><a href="https://drive.google.com/drive/folders/0B-T8urJ4Tv4fem9DQ09jTmxpQTg">SASP-WG BioPhys, Escapement folder</a></p>
 <pre class="r"><code>escapement_goals &lt;- read.csv(&quot;~/R/Esc_goals_evaluated.csv&quot;, stringsAsFactors = FALSE) %&gt;%
   arrange(SASAP.Region, LocationID, Species)</code></pre>
 <p>How Madeline reformatted the data for her WDAFS talk:</p>

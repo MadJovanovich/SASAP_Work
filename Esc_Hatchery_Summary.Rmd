@@ -25,6 +25,10 @@ library(DT)
 
 Annual escapement data and escapement goals
 
+The path to this file is from my local drive, but you cann access it via the shared SASAP Google Drive. This was writted by running GoalEvaluation.Rmd, which is included on [GitHub here](https://github.nceas.ucsb.edu/NCEAS/sasap-data/blob/master/data-processing/Escapement/GoalEvaluation.Rmd). 
+
+[SASP-WG BioPhys, Escapement folder](https://drive.google.com/drive/folders/0B-T8urJ4Tv4fem9DQ09jTmxpQTg)
+
 ```{r}
 escapement_goals <- read.csv("~/R/Esc_goals_evaluated.csv", stringsAsFactors = FALSE) %>%
   arrange(SASAP.Region, LocationID, Species)
